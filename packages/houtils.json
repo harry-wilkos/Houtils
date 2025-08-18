@@ -1,0 +1,19 @@
+{
+  "env": [
+    {
+      "HOUTILS": "$HOME/Projects/houtils"
+    },
+    {
+      "HOUDINI_PATH": {
+        "value": "$HOUTILS/houdini",
+        "method": "append"
+      }
+    },
+    {
+      "PYTHONPATH": {
+        "value": "$HOUTILS/python",
+        "method": "append"
+      }
+    }
+  ]
+}
