@@ -14,6 +14,9 @@
         "value": "$HOUTILS/python",
         "method": "append"
       }
+    },
+    {
+      "LD_PRELOAD": "$HFS/dsolib/libjemalloc.so"
     }
   ]
 }
