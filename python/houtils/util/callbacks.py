@@ -2,8 +2,8 @@ import hou
 
 
 class In_Out_Format:
-    out_state = (hou.Color(1, 1, 1), "chevron_up")
-    in_state = (hou.Color(1, 1, 1), "chevron_down")
+    out_state = (hou.Color(1, 1, 1), "bulge")
+    in_state = (hou.Color(1, 1, 1), "bulge_down")
 
     def __init__(self, kwargs: dict):
         node = kwargs["node"]
