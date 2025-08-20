@@ -15,7 +15,7 @@
 
 ## Features
 #### Tools:
-+ Recook tool to force nodes, to re run
++ *Recook* tool to force nodes, to re run
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
@@ -28,7 +28,7 @@
 + Houdini >= 20.5
 + Python >= 3.11
 >[!IMPORTANT]
->Houtils was built on and for Linux. While I am unaware of any comptaibilty issues and everything is built to be OS agnostic, other OS's may cause have issues.
+>Houtils was built on and for Linux. While I am unaware of any comptaibilty issues and everything is built to be OS agnostic, other OSs may have issues.
 
 
 ## Installation
