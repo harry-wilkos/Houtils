@@ -7,7 +7,6 @@
 
   <toolshelf name="houtil" label="Houtils">
     <memberTool name="recook"/>
-    <memberTool name="tool_1"/>
   </toolshelf>
 
   <tool name="recook" label="Recook" icon="MISC_cook">
