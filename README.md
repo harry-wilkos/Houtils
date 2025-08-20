@@ -13,11 +13,22 @@
 
 ###
 
+## Features
+#### Tools:
++ Recook tool to force nodes, to re run
+
+#### Tweks:
++ Automatically format nodes starting with *In* or *Out*
+
+#### Python Modules:
++ Run functions in non-blocking parallel from within Houdini
+
+
 ## Requirements
 + Houdini >= 20.5
 + Python >= 3.11
->[!WARNING]
->Houtils was built on and for Linux. Whilst I am unaware of any comptaibilty issues and everything is built to be OS agnostic, other OS's may cause issues.
+>[!IMPORTANT]
+>Houtils was built on and for Linux. While I am unaware of any comptaibilty issues and everything is built to be OS agnostic, other OS's may cause have issues.
 
 
 ## Installation
@@ -29,4 +40,24 @@ git clone https://github.com/harry-wilkos/Houtils.git
 ```
 
 ### Step 2:
-In Houtils folder, copy the "packages" folder to your Houdini user preferences folder
+From the Houtils folder, copy the `packages` folder to your Houdini user preferences folder. If there's a already a packages folder, feel free to merge the contents.
+>[!TIP]
+>To find the Houdini user preferences folder, paste the following command into the Python Shell Pane in Houdini.
+>```python
+>hou.getenv("HOUDINI_USER_PREF_DIR")
+>```
+
+### Step 3:
+Edit the `houtils.json` file in the `packages` folder and change the *HOUTILS* entry to the location of the cloned repo
+
+>[!IMPORTANT]
+>If working with the [parallel](https://github.com/harry-wilkos/Houtils/blob/main/python/houtils/util/parallel.py) module some systems refuse to honour the executable stack requested (but seemingly un-needed) by ```$HFS/dsolib/libHoudiniUT.so```. To fix this, clear the executable flag on that file. Linux users can achieve with the `execstack -c` followed by the path to the library. Do at your own risk.
+
+
+
+## Update
+If you want to update when new tools and features are added run the following two commands when in the cloned repo
+```bash
+git fetch --all
+git reset --hard origin/main
+```
