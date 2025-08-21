@@ -16,7 +16,7 @@
 ## Features
 #### Tools:
 + *Recook* tool to force nodes, to re-run
-+ *Update Mode Toggle* with visual feedback in network pane 
+ *Update Mode Toggle* with visual feedback in network pane 
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
@@ -28,7 +28,8 @@
 
 ## Requirements
 + Houdini >= 20.5
-+ Python >= 3.11
+  + Python >= 3.11
+  + PySide2
 >[!IMPORTANT]
 >Houtils was built on and for Linux. While I am unaware of any comptaibilty issues and everything is built to be OS agnostic, other OSs may have issues.
 
