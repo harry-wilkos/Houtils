@@ -15,13 +15,15 @@
 
 ## Features
 #### Tools:
-+ *Recook* tool to force nodes, to re run
++ *Recook* tool to force nodes, to re-run
++ *Update Mode Toggle* with visual feedback in network pane 
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
 
 #### Python Modules:
 + Run functions in non-blocking parallel from within Houdini
++ Use the Network Pane to display notifications
 
 
 ## Requirements

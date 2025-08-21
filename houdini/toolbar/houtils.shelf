@@ -7,6 +7,7 @@
 
   <toolshelf name="houtil" label="Houtils">
     <memberTool name="recook"/>
+    <memberTool name="toggle_update_mode"/>
   </toolshelf>
 
   <tool name="recook" label="Recook" icon="MISC_cook">
@@ -29,5 +30,10 @@ recook()]]></script>
     <keywordList>
       <keyword>test</keyword>
     </keywordList>
+  </tool>
+
+  <tool name="toggle_update_mode" label="Toggle Update Mode" icon="SOP_enablesolver">
+    <script scriptType="python"><![CDATA[from houtils.tools import toggle_update
+toggle_update()]]></script>
   </tool>
 </shelfDocument>
