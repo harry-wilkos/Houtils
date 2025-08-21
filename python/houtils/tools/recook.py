@@ -33,4 +33,4 @@ def main():
             pass
 
     hou.setUpdateMode(store_upate_mode)
-    background_notify(hou.findFile("icons/recook.png"))
+    background_notify(hou.findFile("icons/reload.png"))

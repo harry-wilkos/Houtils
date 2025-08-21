@@ -1,0 +1,33 @@
+{
+	"name":"Houdini",
+	"version":2,
+	"houdini.version":"20.5.654",
+	"symbol":"",
+	"contexts":[
+		{
+			"symbol":"h",
+			"bindings":[
+				{
+					"action":"h.tool:recook",
+					"keys":["Ctrl+R"
+					]
+				},
+				{
+					"action":"h.tool:toggle_update_mode",
+					"keys":["M"
+					]
+				}
+			]
+		},
+		{
+			"symbol":"h.pane.gview.state.sop.capturelayerpaint",
+			"bindings":[
+				{
+					"action":"h.pane.gview.state.sop.capturelayerpaint.select",
+					"keys":["G"
+					]
+				}
+			]
+		}
+	]
+}
