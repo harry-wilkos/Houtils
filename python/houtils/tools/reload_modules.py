@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 import hou
-from houtils.util.ui import background_notify
+from houtils.utils.ui import background_notify
 
 compiled_suffixes = (".so", ".pyd", ".dll", ".dylib")
 
@@ -40,7 +40,6 @@ def main():
         ignore_path = Path(hh_path).expanduser().resolve()
 
     # Iterate over a snapshot of module names
-    modules_reloaded = False
     for mod_name in list(sys.modules.keys()):
         if mod_name == "__main__":
             continue
@@ -73,8 +72,3 @@ def main():
         except (ImportError, SyntaxError, AttributeError, TypeError) as e:
             # print(f"ERROR: Couldn't reload {mod_name}: {e}")
             pass
-
-    if modules_reloaded:
-        background_notify(
-            hou.findFile("icons/reload.png"),
-        )

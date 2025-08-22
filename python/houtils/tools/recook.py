@@ -1,5 +1,5 @@
 import hou
-from houtils.util.ui import background_notify
+from houtils.utils.ui import background_notify
 
 parms = ("resimulate", "reload", "clear", "dirtybutton")
 
@@ -32,5 +32,5 @@ def main():
         except hou.OperationFailed:
             pass
 
+    background_notify(hou.findFile("config/Icons/recook.png"))
     hou.setUpdateMode(store_upate_mode)
-    background_notify(hou.findFile("icons/reload.png"))

@@ -8,7 +8,7 @@
   <toolshelf name="houtil" label="Houtils">
     <memberTool name="recook"/>
     <memberTool name="toggle_update_mode"/>
-    <memberTool name="refresh_modules"/>
+    <memberTool name="reload_modules"/>
   </toolshelf>
 
   <tool name="recook" label="Recook" icon="MISC_cook">
@@ -38,7 +38,7 @@ recook()]]></script>
 toggle_update()]]></script>
   </tool>
 
-  <tool name="refresh_modules" label="Refresh Modules" icon="COMMON_import">
+  <tool name="reload_modules" label="Reload Modules" icon="COMMON_import">
     <toolMenuContext name="network">
       <contextNetType>OBJ</contextNetType>
       <contextNetType>SOP</contextNetType>
@@ -53,8 +53,7 @@ toggle_update()]]></script>
       <contextNetType>LOP</contextNetType>
     </toolMenuContext>
     <toolSubmenu>Houtils</toolSubmenu>
-    <script scriptType="python"><![CDATA[from houtils.tools import refresh_modules
-import os
-refresh_modules()]]></script>
+    <script scriptType="python"><![CDATA[from houtils.tools import reload_modules
+reload_modules()]]></script>
   </tool>
 </shelfDocument>

@@ -13,8 +13,9 @@ class In_Out_Format:
             node.color(),
             node.userData("nodeshape") or node.type().defaultShape(),
         )
-
         self.formatted = self.check_out(node) or self.check_in(node)
+        self.store_run = self.formatted
+
         if store_state != self.out_state and store_state != self.in_state:
             self.state = store_state
         else:
@@ -35,15 +36,18 @@ class In_Out_Format:
         )
         self.formatted = self.check_out(node) or self.check_in(node)
         if self.formatted:
+            self.store_run = True
             if not (store_state == self.out_state or store_state == self.in_state):
                 self.state = store_state
         else:
-            node.setColor(self.state[0])
-            node.setUserData("nodeshape", self.state[1])
-            self.state = (
-                (node_type := node.type()).defaultColor(),
-                node_type.defaultShape(),
-            )
+            if self.store_run:
+                node.setColor(self.state[0])
+                node.setUserData("nodeshape", self.state[1])
+                self.state = (
+                    (node_type := node.type()).defaultColor(),
+                    node_type.defaultShape(),
+                )
+            self.store_run = False
 
     @classmethod
     def check_out(cls, node: hou.OpNode):
