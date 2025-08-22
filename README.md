@@ -15,8 +15,12 @@
 
 ## Features
 #### Tools:
-+ *Recook* tool to force nodes, to re-run
- *Update Mode Toggle* with visual feedback in network pane 
++ *Recook* tool to force nodes to re-run with *Ctrl + r*
++ *Update Mode Toggle* with *m* plus visual feedback in network pane 
++ *Reload Modules* to continue writing python without restarting Houdini
+
+#### HDAs:
++ *Error Switch* to auto-toggle inputs based on available inputs
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
@@ -24,6 +28,7 @@
 #### Python Modules:
 + Run functions in non-blocking parallel from within Houdini
 + Use the Network Pane to display notifications
+
 
 
 ## Requirements
