@@ -32,5 +32,5 @@ def main():
         except hou.OperationFailed:
             pass
 
-    background_notify(hou.findFile("config/Icons/recook.png"))
     hou.setUpdateMode(store_upate_mode)
+    background_notify(hou.findFile("config/Icons/recook.png"))

@@ -31,11 +31,19 @@ def background_notify(
         ),
     )
     image.setBrightness(transparency)
-    pane.setBackgroundImages([image])
 
-    QTimer.singleShot(
-        time,
-        lambda: pane.setBackgroundImages(  # pyright: ignore[reportAttributeAccessIssue]
-            []
-        ),
-    )
+    def run():
+        try:
+            pane.setBackgroundImages([image])
+            QTimer.singleShot(
+                time,
+                lambda: pane.setBackgroundImages(  # pyright: ignore[reportAttributeAccessIssue]
+                    []
+                ),
+            )
+        except Exception:
+            pass
+        finally:
+            hou.ui.removeEventLoopCallback(run)
+
+    hou.ui.addEventLoopCallback(run)
