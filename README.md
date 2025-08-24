@@ -21,6 +21,7 @@
 
 #### HDAs:
 + **Error Switch** to auto-toggle inputs based on available inputs
++ Modified **Pop Source** to include an option to interpolate the emission
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
