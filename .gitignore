@@ -1,0 +1,6 @@
+# .gitignore
+pyrightconfig.json
+**/__pycache__/
+**/backup/
+*.pyc
+*.pyo
