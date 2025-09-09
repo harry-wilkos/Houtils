@@ -1,6 +1,6 @@
+import hdefereval
 import hou
 from hutil.PySide import QtWidgets  # pyright: ignore[reportUnusedImport]
-from PySide2 import QtCore
 from scenegraphlayers import panel
 
 thePanel = None
@@ -11,7 +11,8 @@ def onCreateInterface():
     global thePanel
     global theTree
     thePanel = panel.SceneGraphLayersPanel()
-    theTree = thePanel.findChild(panel.SceneGraphLayersTree)
+    thePanel.setAnimated(True)
+    theTree = thePanel.view
     return thePanel
 
 
@@ -37,7 +38,7 @@ def onNodePathChanged(node):
     global thePanel
     global theTree
     thePanel._panePathChanged(node)
-    QtCore.QTimer.singleShot(1000, theTree.expandAll)
+    hdefereval.executeDeferred(theTree.expandAll)
 
 
 def main():
