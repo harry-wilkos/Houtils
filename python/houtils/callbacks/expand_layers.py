@@ -1,44 +1,82 @@
 import hdefereval
 import hou
-from hutil.PySide import QtWidgets  # pyright: ignore[reportUnusedImport]
-from scenegraphlayers import panel
+from PySide2.QtCore import QModelIndex
+from scenegraphlayers import panel as base
 
-thePanel = None
-theTree = None
+panel = None
+tree = None
+model = None
+store = {}
+
+
+def get_indexes(model, parent=QModelIndex()):
+    indexes = []
+    for row in range(model.rowCount(parent)):
+        if (index := model.index(row, 0, parent)).isValid():
+            indexes.append(index)
+            if model.hasChildren(index):
+                indexes.extend(get_indexes(model, index))
+    return indexes
+
+
+def expand():
+    global model
+    global tree
+
+    for index in get_indexes(model):
+        data = index.data(0)
+        if data in store and store[data]:
+            tree.expand(index)
 
 
 def onCreateInterface():
-    global thePanel
-    global theTree
-    thePanel = panel.SceneGraphLayersPanel()
-    thePanel.setAnimated(True)
-    theTree = thePanel.view
-    return thePanel
+    global panel
+    global tree
+    global model
+
+    panel = base.SceneGraphLayersPanel()
+    tree = panel.view
+    model = tree.model()
+    return panel
 
 
 def onActivateInterface():
-    global thePanel
-    thePanel._paneActivated(kwargs["paneTab"])
+    global panel
+
+    panel._paneActivated(kwargs["paneTab"])  # pyright: ignore[reportUndefinedVariable]
 
 
 def onDeactivateInterface():
-    global thePanel
-    thePanel._paneDeactivated()
+    global panel
+
+    panel._paneDeactivated()
 
 
 def onDestroyInterface():
-    global thePanel
-    global theTree
-    thePanel._paneClosed()
-    thePanel = None
-    theTree = None
+    global panel
+    global tree
+    global model
+    global store
+
+    panel._paneClosed()
+
+    panel = None
+    tree = None
+    model = None
+    store = {}
 
 
 def onNodePathChanged(node):
-    global thePanel
-    global theTree
-    thePanel._panePathChanged(node)
-    hdefereval.executeDeferred(theTree.expandAll)
+    global panel
+    global tree
+    global model
+    global store
+
+    for index in get_indexes(model):
+        store[index.data(0)] = tree.isExpanded(index)
+
+    panel._panePathChanged(node)
+    hdefereval.executeDeferred(expand)
 
 
 def main():
