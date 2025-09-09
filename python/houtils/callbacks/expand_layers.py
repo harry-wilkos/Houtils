@@ -26,7 +26,7 @@ def expand():
     for index in get_indexes(model):
         data = index.data(0)
         if data in store and store[data]:
-            tree.expand(index)
+            tree.expand(index)  # pyright: ignore[reportOptionalMemberAccess]
 
 
 def onCreateInterface():
@@ -43,13 +43,15 @@ def onCreateInterface():
 def onActivateInterface():
     global panel
 
-    panel._paneActivated(kwargs["paneTab"])  # pyright: ignore[reportUndefinedVariable]
+    panel._paneActivated(  # pyright: ignore[reportOptionalMemberAccess]
+        kwargs["paneTab"]  # pyright: ignore[reportUndefinedVariable]
+    )
 
 
 def onDeactivateInterface():
     global panel
 
-    panel._paneDeactivated()
+    panel._paneDeactivated()  # pyright: ignore[reportOptionalMemberAccess]
 
 
 def onDestroyInterface():
@@ -58,7 +60,7 @@ def onDestroyInterface():
     global model
     global store
 
-    panel._paneClosed()
+    panel._paneClosed()  # pyright: ignore[reportOptionalMemberAccess]
 
     panel = None
     tree = None
@@ -73,9 +75,11 @@ def onNodePathChanged(node):
     global store
 
     for index in get_indexes(model):
-        store[index.data(0)] = tree.isExpanded(index)
+        store[index.data(0)] = tree.isExpanded(  # pyright: ignore[reportOptionalMemberAccess]
+            index
+        )
 
-    panel._panePathChanged(node)
+    panel._panePathChanged(node)  # pyright: ignore[reportOptionalMemberAccess]
     hdefereval.executeDeferred(expand)
 
 
