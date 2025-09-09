@@ -25,7 +25,7 @@ def expand():
 
     for index in get_indexes(model):
         data = index.data(0)
-        if data in store and store[data]:
+        if not data in store or store[data]:
             tree.expand(index)  # pyright: ignore[reportOptionalMemberAccess]
 
 
