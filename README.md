@@ -25,6 +25,7 @@
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
++ Persisten *scene graph layers* panel folds 
 
 #### Python Modules:
 + Run functions in non-blocking parallel from within Houdini
