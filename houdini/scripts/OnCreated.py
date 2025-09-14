@@ -1,3 +1,5 @@
 from houtils.callbacks import In_Out_Format
+import hou
 
-In_Out_Format(kwargs)
+if hou.isUIAvailable():
+    In_Out_Format(kwargs)
