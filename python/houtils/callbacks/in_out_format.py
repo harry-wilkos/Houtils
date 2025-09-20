@@ -1,4 +1,3 @@
-
 import hou
 
 
@@ -50,6 +49,15 @@ class In_Out_Format:
                 )
             self.store_run = False
 
+    @staticmethod
+    def capitalize(string: str):
+        chars = list(string)
+        for count, char in enumerate(chars):
+            if (count == 0 or string[count - 1] in ("_", "-")) and char.isalpha():
+                chars[count] = char.upper()
+
+        return "".join(chars)
+
     @classmethod
     def check_out(cls, node: hou.OpNode):
         if len(check_name := node.name()) < 3:
@@ -77,7 +85,7 @@ class In_Out_Format:
         ):
             return False
 
-        node.setName("IN" + check_name[2:], unique_name=True)
+        node.setName("IN" + cls.capitalize(check_name[2:]), unique_name=True)
         node.setColor(cls.in_state[0])
         node.setUserData("nodeshape", cls.in_state[1])
         return True
