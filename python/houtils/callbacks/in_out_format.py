@@ -69,7 +69,7 @@ class In_Out_Format:
         ):
             return False
 
-        node.setName("OUT" + check_name[3:], unique_name=True)
+        node.setName("OUT" + cls.capitalize(check_name[3:]), unique_name=True)
         node.setColor(cls.out_state[0])
         node.setUserData("nodeshape", cls.out_state[1])
         return True
