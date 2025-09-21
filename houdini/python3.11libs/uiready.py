@@ -1,3 +1,5 @@
 from houtils.callbacks import expand_layers
+import hou
 
-expand_layers()
+if hou.isUIAvailable():
+    expand_layers()
