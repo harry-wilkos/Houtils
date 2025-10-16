@@ -22,6 +22,7 @@
 #### HDAs:
 + **Error Switch** to auto-toggle inputs based on available inputs
 + Modified **Pop Source** to include an option to interpolate the emission
++ Move and rotate any object in any position to the the aligned center with **Align to Center**
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
