@@ -9,22 +9,18 @@ class In_Out_Format:
         node = kwargs["node"]
         node.addEventCallback((hou.nodeEventType.NameChanged,), self.format)
 
-        store_state = (
+        current_state = (
             node.color(),
             node.userData("nodeshape") or node.type().defaultShape(),
         )
-        self.formatted = False
-        self.store_run = False
 
-        if store_state != self.out_state and store_state != self.in_state:
-            self.state = store_state
+        if current_state in (self.out_state, self.in_state):
+            node_type = node.type()
+            self.state = (node_type.defaultColor(), node_type.defaultShape())
+            self._state_saved = True
         else:
-            self.state = (
-                (node_type := node.type()).defaultColor(),
-                node_type.defaultShape(),
-            )
-            self.formatted = True
-            self.store_run = True
+            self.state = current_state
+            self._state_saved = False
 
     def format(
         self,
@@ -32,24 +28,27 @@ class In_Out_Format:
         **kwargs: hou.OpNode,
     ):
         node = kwargs["node"]
-        store_state = (
+        pre_state = (
             node.color(),
             node.userData("nodeshape") or node.type().defaultShape(),
         )
-        self.formatted = self.check_out(node) or self.check_in(node)
-        if self.formatted:
-            self.store_run = True
-            if not (store_state == self.out_state or store_state == self.in_state):
-                self.state = store_state
+
+        did_format = self.check_out(node) or self.check_in(node)
+
+        if did_format:
+            if not self._state_saved and pre_state not in (
+                self.out_state,
+                self.in_state,
+            ):
+                self.state = pre_state
+                self._state_saved = True
         else:
-            if self.store_run:
+            if self._state_saved:
                 node.setColor(self.state[0])
                 node.setUserData("nodeshape", self.state[1])
-                self.state = (
-                    (node_type := node.type()).defaultColor(),
-                    node_type.defaultShape(),
-                )
-            self.store_run = False
+                node_type = node.type()
+                self.state = (node_type.defaultColor(), node_type.defaultShape())
+            self._state_saved = False
 
     @staticmethod
     def capitalize(string: str):
@@ -57,18 +56,15 @@ class In_Out_Format:
         for count, char in enumerate(chars):
             if (count == 0 or string[count - 1] in ("_", "-")) and char.isalpha():
                 chars[count] = char.upper()
-
         return "".join(chars)
 
     @classmethod
     def check_out(cls, node: hou.OpNode):
         if len(check_name := node.name()) < 3:
             return False
-        elif not check_name.lower().startswith("out"):
+        if not check_name.lower().startswith("out"):
             return False
-        elif len(check_name) >= 4 and not (
-            (check_dash := check_name[3]) == "-" or check_dash == "_"
-        ):
+        if len(check_name) >= 4 and not (check_name[3] in ("-", "_")):
             return False
 
         node.setName("OUT" + cls.capitalize(check_name[3:]), unique_name=True)
@@ -80,11 +76,9 @@ class In_Out_Format:
     def check_in(cls, node: hou.OpNode):
         if len(check_name := node.name()) < 2:
             return False
-        elif not check_name.lower().startswith("in"):
+        if not check_name.lower().startswith("in"):
             return False
-        elif len(check_name) >= 3 and not (
-            (check_dash := check_name[2]) == "-" or check_dash == "_"
-        ):
+        if len(check_name) >= 3 and not (check_name[2] in ("-", "_")):
             return False
 
         node.setName("IN" + cls.capitalize(check_name[2:]), unique_name=True)
