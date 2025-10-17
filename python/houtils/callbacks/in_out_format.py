@@ -6,16 +6,16 @@ class In_Out_Format:
     in_state = (hou.Color(1, 1, 1), "bulge_down")
 
     def __init__(self, kwargs: dict):
-        node = kwargs["node"]
-        node.addEventCallback((hou.nodeEventType.NameChanged,), self.format)
+        self.node = kwargs["node"]
+        self.node.addEventCallback((hou.nodeEventType.NameChanged,), self.format)
 
         current_state = (
-            node.color(),
-            node.userData("nodeshape") or node.type().defaultShape(),
+            self.node.color(),
+            self.node.userData("nodeshape") or self.node.type().defaultShape(),
         )
 
         if current_state in (self.out_state, self.in_state):
-            node_type = node.type()
+            node_type = self.node.type()
             self.state = (node_type.defaultColor(), node_type.defaultShape())
             self._state_saved = True
         else:
@@ -27,13 +27,12 @@ class In_Out_Format:
         event_type: hou.nodeEventType,  # pyright: ignore[reportUnusedParameter]
         **kwargs: hou.OpNode,
     ):
-        node = kwargs["node"]
         pre_state = (
-            node.color(),
-            node.userData("nodeshape") or node.type().defaultShape(),
+            self.node.color(),
+            self.node.userData("nodeshape") or self.node.type().defaultShape(),
         )
 
-        did_format = self.check_out(node) or self.check_in(node)
+        did_format = self.check_out(self.node) or self.check_in(self.node)
 
         if did_format:
             if not self._state_saved and pre_state not in (
@@ -44,9 +43,9 @@ class In_Out_Format:
                 self._state_saved = True
         else:
             if self._state_saved:
-                node.setColor(self.state[0])
-                node.setUserData("nodeshape", self.state[1])
-                node_type = node.type()
+                self.node.setColor(self.state[0])
+                self.node.setUserData("nodeshape", self.state[1])
+                node_type = self.node.type()
                 self.state = (node_type.defaultColor(), node_type.defaultShape())
             self._state_saved = False
 
