@@ -1,7 +1,7 @@
 import hou
 
 
-class Auto_Format:
+class Auto_Color:
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
         self.default = self.node.type().defaultColor()
