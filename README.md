@@ -63,7 +63,7 @@ From the Houtils folder, copy the `packages` folder to your Houdini user prefere
 Edit the `houtils.json` file in the `packages` folder and change the *HOUTILS* entry to the location of the cloned repo
 
 >[!IMPORTANT]
->If working with the [parallel](https://github.com/harry-wilkos/Houtils/blob/main/python/houtils/utils/parallel.py) module, some systems refuse to honour the executable stack requested (but seemingly un-needed) by `$HFS/dsolib/libHoudiniUT.so`. To fix this, clear the executable flag on that file. Linux users can achieve with the `execstack -c` followed by the path to the library. Do at your own risk.
+>If working with the [parallel](https://github.com/harry-wilkos/Houtils/blob/main/python/houtils/utils/parallel.py) module, some systems refuse to honour the executable stack requested (but seemingly un-needed) by `$HFS/dsolib/libHoudiniUT.so`. To fix this, clear the executable flag on that file. Linux users can achieve with the `execstack -c` followed by the path to the library. **Do at your own risk**.
 
 
 
