@@ -23,7 +23,9 @@
 + **Error Switch** to auto-toggle inputs based on available inputs
 + Modified **Pop Source** to include an option to interpolate the emission
 + Move and rotate any object in any position to the the aligned center with **Align to Center**
-+ Use **Rasterize Frumstum** to raster and resample density volumes into camera-based frustum grids
++ Use **Rasterize Frumstum** to rasterize and resample density volumes into camera-based frustum grids
++ Create evenly segmented volumes, points or primitives with **Slice**
++ Resample or rasterize point attributes attributes with **Voxels from Camera** to calculate the voxels size relative to the camera
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
