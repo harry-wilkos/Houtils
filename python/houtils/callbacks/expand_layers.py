@@ -1,6 +1,11 @@
 import hdefereval
 import hou
-from PySide2.QtCore import QModelIndex
+
+try:
+    from PySide6.QtCore import QModelIndex
+except ImportError:
+    from PySide2.QtCore import QModelIndex
+
 from scenegraphlayers import panel as base
 
 panel = None
