@@ -1,7 +1,12 @@
 from pathlib import Path
 
 import hou
-from PySide2.QtCore import QTimer
+
+try:
+    from PySide6.QtCore import QTimer
+except ImportError:
+    from PySide2.QtCore import QTimer
+
 
 
 def background_notify(
