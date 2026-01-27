@@ -40,9 +40,10 @@
 ## Requirements
 + Houdini >= 20.5
   + Python >= 3.10
-  + PySide2
+  + PySide2 or PySide6
+
 >[!IMPORTANT]
->Houtils was built on and for Linux. While I am unaware of any comptaibilty issues and everything is built to be OS agnostic, other OSs may have issues.
+>Houtils was built on and for Linux. While I am unaware of any comptaibilty issues and everything is built to be OS agnostic, other OS's may have issues.
 
 
 ## Installation
