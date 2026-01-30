@@ -1,4 +1,5 @@
 import hou
+from ..utils.ui import default_node_color
 
 
 class In_Out_Format:
@@ -7,6 +8,7 @@ class In_Out_Format:
 
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
+        self.type = self.node.type()
         self.node.addEventCallback((hou.nodeEventType.NameChanged,), self.format)
 
         current_state = (
@@ -45,8 +47,7 @@ class In_Out_Format:
             if self._state_saved:
                 self.node.setColor(self.state[0])
                 self.node.setUserData("nodeshape", self.state[1])
-                node_type = self.node.type()
-                self.state = (node_type.defaultColor(), node_type.defaultShape())
+                self.state = (default_node_color(self.node), self.type.defaultShape())
             self._state_saved = False
 
     @staticmethod
