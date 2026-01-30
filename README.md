@@ -9,7 +9,7 @@
 
 ###
 
-<h4 align="center">Houdini Tools, HDAs, Tweaks and Librarys for a more convenient experience</h4>
+<h4 align="center">A Houdini package containing Tools, HDAs, Tweaks and Librarys for a more convenient experience</h4>
 
 ###
 
