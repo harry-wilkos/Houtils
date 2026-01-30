@@ -1,74 +1,169 @@
+from collections import deque
+
+import hdefereval
 import hou
+
+from ..utils.ui import default_node_color
 
 
 class Auto_Color:
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
-        self.default = self.node.type().defaultColor()
+        self.leader = self.calc_leader()
 
-        self._last_auto_color: hou.Color | None = None
-        self._manual_override: bool = False
+        if not kwargs["loading"]:
+            hdefereval.executeDeferred(
+                lambda: self.node.setCachedUserData(
+                    "houtils:default_color", self.node.color()
+                )
+            )
 
-        self.apply_color()
-
-        self.node.addEventCallback(
-            (hou.nodeEventType.InputRewired, hou.nodeEventType.AppearanceChanged),
-            self.node_event,
+        hdefereval.executeDeferred(
+            lambda: (
+                self.node.addEventCallback(
+                    (
+                        hou.nodeEventType.InputRewired,
+                        hou.nodeEventType.InputDataChanged,
+                    ),
+                    self.parent_changed,
+                ),
+                self.node.addEventCallback(
+                    (hou.nodeEventType.AppearanceChanged,),
+                    self.color_changed,
+                ),
+            )
         )
 
-    def node_event(self, event_type: hou.nodeEventType, **kwargs):
-        if event_type == hou.nodeEventType.AppearanceChanged:
-            current = self.node.color()
-            if self._last_auto_color is None:
-                if current != self.default:
-                    self._manual_override = True
-                else:
-                    self._manual_override = False
-            else:
-                self._manual_override = current != self._last_auto_color
-        elif event_type == hou.nodeEventType.InputRewired:
-            self.apply_color()
+    def color_changed(self, event_type: hou.nodeEventType, **kwargs):
+        if kwargs["change_type"] != hou.appearanceChangeType.Color:
+            return
 
-    def apply_color(self):
-        auto_color = self.default
-        if target := self.retrieve_parent(self.node):
-            parent_color = self.retrieve_color(target)
-            if parent_color is not None:
-                auto_color = parent_color
+        # if not in edit mode change this
+        self.node.setCachedUserData("houtils:auto", False)
+        if self.leader and self.check_in_out(self.node):
+            self.calc_leader()
+            if not self.node.inputs():
+                # Find the leader below and set them as a leader
+                # Going to need to refactor code to not use self.leader if it can now be updated from other nodes
+                # look at @property
+                print("working progress")
 
-        current_color = self.node.color()
 
-        if not self._manual_override:
-            self.node.setColor(auto_color)
-            self._last_auto_color = auto_color
-            self._manual_override = False
+        self.flood_color()
+
+        if self.check_default_color(self.node):
+            self.node.setCachedUserData("houtils:auto", True)
+
+    def parent_changed(self, event_type: hou.nodeEventType, **kwargs):
+        self.calc_leader()
+        if self.leader:
+            if not self.node.inputs() and self.node.cachedUserData("houtils:auto"):
+                self.set_color(self.node, default_node_color(self.node))
+            self.flood_color()
+        elif leader := self.find_leader():
+            color = leader.color()
+            if self.check_default_color(leader, color):
+                color = default_node_color(self.node)
+            if not self.check_in_out(self.node):
+                self.set_color(self.node, color)
+            self.flood_color(color)
+
+    def find_leader(self) -> hou.OpNode | None:
+        queue = deque(self.node.inputs())
+        store = set()
+        container = self.node.parent()
+        while queue:
+            if (
+                ((input := queue.popleft()) is None)
+                or (input in store)
+                or (input.parent() != container)
+            ):
+                continue
+            if input.cachedUserData("houtils:leader"):
+                return input
+
+            parents = [
+                input
+                for input in input.inputs()
+                if input is not None and input.parent() == container
+            ]
+            queue.extendleft(reversed(parents))
+            store.add(input)
+
+    def calc_leader(self):
+        color = self.node.color()
+        default = self.check_default_color(self.node, color)
+        container = self.node.parent()
+        leader = False if self.check_in_out(self.node) else True
+
+        queue = deque(self.node.inputs())
+        store = set()
+        while queue:
+            if (
+                ((input := queue.popleft()) is None)
+                or (input in store)
+                or (input.parent() != container)
+            ):
+                continue
+
+            if not self.check_in_out(input) and (
+                default
+                or (color == input.color())
+                or self.node.cachedUserData("houtils:auto")
+            ):
+                leader = False
+                break
+
+            parents = [
+                input
+                for input in input.inputs()
+                if input is not None and input.parent() == container
+            ]
+            queue.extendleft(reversed(parents))
+            store.add(input)
+
+        if leader:
+            self.node.setCachedUserData("houtils:leader", True)
         else:
-            if current_color == auto_color:
-                self.node.setColor(auto_color)
-                self._last_auto_color = auto_color
-                self._manual_override = False
-            else:
-                pass
+            self.node.setCachedUserData("houtils:leader", False)
+        self.leader = leader
+
+    def flood_color(self, color: hou.Color | None = None):
+        if self.check_in_out(self.node):
+            return
+        queue = deque(self.node.outputsWithIndices(True))
+        store = set()
+        color = self.node.color() if not color else color
+        if self.check_default_color(self.node, color):
+            color = None
+        while queue:
+            current = queue.pop()
+            if (
+                ((child := current[0]) is None)
+                or (child in store)
+                or (child.cachedUserData("houtils:leader"))
+                or (current[2] != child.inputsWithIndices(True)[0][2])
+                or (self.check_in_out(child))
+            ):
+                continue
+
+            if not self.check_in_out(child):
+                if not (apply_color := color):
+                    apply_color = default_node_color(child)
+                self.set_color(child, apply_color)
+            queue.extend(child.outputsWithIndices(True))
 
     @staticmethod
-    def retrieve_parent(node: hou.OpNode) -> hou.OpNode | None:
-        target = None
-        for input in node.inputs():
-            while input is not None and not target:
-                if not (name := input.name()).startswith("OUT") and not name.startswith(
-                    "IN"
-                ):
-                    target = input
-                else:
-                    if parents := input.inputs():
-                        input = parents[0]
-                    else:
-                        input = None
-        return target
+    def check_in_out(node: hou.OpNode) -> bool:
+        return (name := node.name()).startswith("OUT") or name.startswith("IN")
+
 
     @staticmethod
-    def retrieve_color(node: hou.OpNode) -> hou.Color | None:
-        color = node.color()
-        if node.type().defaultColor() == color:
-            return None
-        return color
+    def check_default_color(node: hou.OpNode, color: hou.Color | None = None) -> bool:
+        color = node.color() if not color else color
+        return default_node_color(node) == color
+
+    @staticmethod
+    def set_color(node: hou.OpNode, color: hou.Color):
+        node.setColor(color)
+        node.setCachedUserData("houtils:auto", True)
