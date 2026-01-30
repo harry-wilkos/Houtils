@@ -29,7 +29,8 @@
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
-+ Persisten *scene graph layers* panel folds 
++ Persisten *scene graph layers* panel folds
++ Automatically color groups of Nodes in a trickle down effect 
 
 #### Python Modules:
 + Run functions in non-blocking parallel from within Houdini
