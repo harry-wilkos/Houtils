@@ -10,7 +10,6 @@ class Auto_Color:
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
         self.leader = self.calc_leader()
-
         if not kwargs["loading"]:
             hdefereval.executeDeferred(
                 lambda: self.node.setCachedUserData(
@@ -34,31 +33,32 @@ class Auto_Color:
             )
         )
 
+        hdefereval.executeDeferred(self.parent_changed)
+
     def color_changed(self, event_type: hou.nodeEventType, **kwargs):
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
             return
 
         # if not in edit mode change this
         self.node.setCachedUserData("houtils:auto", False)
-        if self.leader and self.check_in_out(self.node):
-            self.calc_leader()
-            if not self.node.inputs():
-                # Find the leader below and set them as a leader
-                # Going to need to refactor code to not use self.leader if it can now be updated from other nodes
-                # look at @property
-                print("working progress")
 
+        if self.check_in_out(self.node):
+            for out in self.node.outputs():
+                out.setCachedUserData("houtils:leader", True)
+                out.setCachedUserData("houtils:auto", False)
 
+        self.leader = self.calc_leader()
         self.flood_color()
 
         if self.check_default_color(self.node):
             self.node.setCachedUserData("houtils:auto", True)
 
-    def parent_changed(self, event_type: hou.nodeEventType, **kwargs):
-        self.calc_leader()
+    def parent_changed(self, event_type: hou.nodeEventType | None = None, **kwargs):
+        self.leader = self.calc_leader()
         if self.leader:
             if not self.node.inputs() and self.node.cachedUserData("houtils:auto"):
                 self.set_color(self.node, default_node_color(self.node))
+
             self.flood_color()
         elif leader := self.find_leader():
             color = leader.color()
@@ -90,7 +90,7 @@ class Auto_Color:
             queue.extendleft(reversed(parents))
             store.add(input)
 
-    def calc_leader(self):
+    def calc_leader(self) -> bool:
         color = self.node.color()
         default = self.check_default_color(self.node, color)
         container = self.node.parent()
@@ -122,11 +122,7 @@ class Auto_Color:
             queue.extendleft(reversed(parents))
             store.add(input)
 
-        if leader:
-            self.node.setCachedUserData("houtils:leader", True)
-        else:
-            self.node.setCachedUserData("houtils:leader", False)
-        self.leader = leader
+        return leader
 
     def flood_color(self, color: hou.Color | None = None):
         if self.check_in_out(self.node):
@@ -157,7 +153,6 @@ class Auto_Color:
     def check_in_out(node: hou.OpNode) -> bool:
         return (name := node.name()).startswith("OUT") or name.startswith("IN")
 
-
     @staticmethod
     def check_default_color(node: hou.OpNode, color: hou.Color | None = None) -> bool:
         color = node.color() if not color else color
@@ -167,3 +162,11 @@ class Auto_Color:
     def set_color(node: hou.OpNode, color: hou.Color):
         node.setColor(color)
         node.setCachedUserData("houtils:auto", True)
+
+    @property
+    def leader(self) -> bool:
+        return self.node.cachedUserData("houtils:leader")
+
+    @leader.setter
+    def leader(self, state: bool):
+        self.node.setCachedUserData("houtils:leader", state)
