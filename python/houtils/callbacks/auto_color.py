@@ -2,7 +2,6 @@ from collections import deque
 
 import hdefereval
 import hou
-
 from houtils.utils.ui import default_node_color
 
 
@@ -10,30 +9,16 @@ class Auto_Color:
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
         self.leader = self.calc_leader()
-        if not kwargs["loading"]:
-            hdefereval.executeDeferred(
-                lambda: self.node.setCachedUserData(
-                    "houtils:default_color", self.node.color()
-                )
-            )
+        hdefereval.executeDeferred(lambda: self.deferred_init(kwargs["loading"]))
 
-        hdefereval.executeDeferred(
-            lambda: (
-                self.node.addEventCallback(
-                    (
-                        hou.nodeEventType.InputRewired,
-                        hou.nodeEventType.InputDataChanged,
-                    ),
-                    self.parent_changed,
-                ),
-                self.node.addEventCallback(
-                    (hou.nodeEventType.AppearanceChanged,),
-                    self.color_changed,
-                ),
-            )
-        )
+    def deferred_init(self, loading: bool):
+        if not loading:
+            self.node.setCachedUserData("houtils:defaukt_color", self.node.color())
+        
+        self.node.addEventCallback((hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired), self.parent_changed)
+        self.node.addEventCallback((hou.nodeEventType.AppearanceChanged,), self.color_changed)
+        self.parent_changed()
 
-        hdefereval.executeDeferred(self.parent_changed)
 
     def color_changed(self, event_type: hou.nodeEventType, **kwargs):
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
@@ -83,9 +68,9 @@ class Auto_Color:
                 return input
 
             parents = [
-                input
-                for input in input.inputs()
-                if input is not None and input.parent() == container
+                inp
+                for inp in input.inputs()
+                if inp is not None and inp.parent() == container
             ]
             queue.extendleft(reversed(parents))
             store.add(input)
@@ -138,7 +123,8 @@ class Auto_Color:
                 ((child := current[0]) is None)
                 or (child in store)
                 or (child.cachedUserData("houtils:leader"))
-                or (current[2] != child.inputsWithIndices(True)[0][2])
+                # or (current[2] != child.inputsWithIndices(True)[0][2])
+                or (current[1] != 0)
                 or (self.check_in_out(child))
             ):
                 continue
