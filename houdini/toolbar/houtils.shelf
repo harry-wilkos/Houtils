@@ -58,7 +58,7 @@ toggle_update()]]></script>
 reload_modules()]]></script>
   </tool>
 
-  <tool name="clear_colors" label="Clear Colors" icon="clear_colors">
+  <tool name="clear_colors" label="Clear Colors" icon="clear_colors.svg">
     <toolMenuContext name="network">
       <contextNetType>OBJ</contextNetType>
       <contextNetType>SOP</contextNetType>
