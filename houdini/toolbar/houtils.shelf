@@ -9,6 +9,7 @@
     <memberTool name="recook"/>
     <memberTool name="toggle_update_mode"/>
     <memberTool name="reload_modules"/>
+    <memberTool name="clear_colors"/>
   </toolshelf>
 
   <tool name="recook" label="Recook" icon="MISC_cook">
@@ -55,5 +56,25 @@ toggle_update()]]></script>
     <toolSubmenu>Houtils</toolSubmenu>
     <script scriptType="python"><![CDATA[from houtils.tools import reload_modules
 reload_modules()]]></script>
+  </tool>
+
+  <tool name="clear_colors" label="Clear Colors" icon="clear_colors">
+    <toolMenuContext name="network">
+      <contextNetType>OBJ</contextNetType>
+      <contextNetType>SOP</contextNetType>
+      <contextNetType>CHOP</contextNetType>
+      <contextNetType>ROP</contextNetType>
+      <contextNetType>SHOP</contextNetType>
+      <contextNetType>COP2</contextNetType>
+      <contextNetType>VOP</contextNetType>
+      <contextNetType>VOPNET</contextNetType>
+      <contextNetType>DOP</contextNetType>
+      <contextNetType>TOP</contextNetType>
+      <contextNetType>LOP</contextNetType>
+      <contextNetType>COP</contextNetType>
+    </toolMenuContext>
+    <toolSubmenu>Houtils</toolSubmenu>
+    <script scriptType="python"><![CDATA[from houtils.tools import clear_colors
+clear_colors()]]></script>
   </tool>
 </shelfDocument>
