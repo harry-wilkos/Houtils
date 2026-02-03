@@ -11,8 +11,8 @@ class Auto_Color:
         hdefereval.executeDeferred(lambda: self.deferred_init(kwargs["loading"]))
 
     def deferred_init(self, loading: bool):
-        if not loading:
-            self.node.setCachedUserData("houtils:default_color", self.node.color())
+        # if not loading:
+        #     self.node.setCachedUserData("houtils:default_color", self.node.color())
 
         self.node.addEventCallback(
             (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
@@ -21,7 +21,9 @@ class Auto_Color:
         self.node.addEventCallback(
             (hou.nodeEventType.AppearanceChanged,), self.color_changed
         )
-        self.parent_changed()
+        if not loading:
+            self.node.setCachedUserData("houtils:default_color", self.node.color())
+            self.parent_changed()
 
     def color_changed(self, event_type: hou.nodeEventType, **kwargs):
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
