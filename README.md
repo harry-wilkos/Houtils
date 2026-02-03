@@ -18,6 +18,7 @@
 + **Recook** tool to force nodes to re-run with <*Ctrl + R*>
 + **Update Mode Toggle** with <*M*> plus visual feedback in network pane 
 + **Reload Modules** to continue writing python without restarting Houdini
++ **Clear Colors** on nodes to their default colors with <*Ctrls + Shift + C*>
 
 #### HDAs:
 + **Error Switch** to auto-toggle inputs based on available inputs
@@ -30,7 +31,7 @@
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
 + Persisten *scene graph layers* panel folds
-+ Automatically color groups of Nodes in a trickle down effect 
++ *Automatically color* groups of Nodes in a trickle down effect 
 
 #### Python Modules:
 + Run functions in non-blocking parallel from within Houdini
