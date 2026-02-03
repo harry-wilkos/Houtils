@@ -1,7 +1,6 @@
 {
 	"name":"Houdini",
 	"version":2,
-	"houdini.version":"20.5.654",
 	"symbol":"",
 	"contexts":[
 		{
@@ -15,6 +14,26 @@
 				{
 					"action":"h.tool:toggle_update_mode",
 					"keys":["M"
+					]
+				}
+			]
+		},
+		{
+			"symbol":"h.pane.gview.state.sop.capturelayerpaint",
+			"bindings":[
+				{
+					"action":"h.pane.gview.state.sop.capturelayerpaint.select",
+					"keys":["G"
+					]
+				}
+			]
+		},
+		{
+			"symbol":"h.pane.wsheet",
+			"bindings":[
+				{
+					"action":"h.pane.wsheet.tool:clear_colors",
+					"keys":["Ctrl+Shift+C"
 					]
 				}
 			]
