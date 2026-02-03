@@ -1,5 +1,5 @@
 import hou
-from ..utils.ui import default_node_color
+from houtils.utils.ui import default_node_color
 
 
 class In_Out_Format:

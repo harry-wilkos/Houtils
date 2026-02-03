@@ -3,7 +3,7 @@ from collections import deque
 import hdefereval
 import hou
 
-from ..utils.ui import default_node_color
+from houtils.utils.ui import default_node_color
 
 
 class Auto_Color:
