@@ -8,17 +8,20 @@ from houtils.utils.ui import default_node_color
 class Auto_Color:
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
-        self.leader = self.calc_leader()
         hdefereval.executeDeferred(lambda: self.deferred_init(kwargs["loading"]))
 
     def deferred_init(self, loading: bool):
         if not loading:
-            self.node.setCachedUserData("houtils:defaukt_color", self.node.color())
-        
-        self.node.addEventCallback((hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired), self.parent_changed)
-        self.node.addEventCallback((hou.nodeEventType.AppearanceChanged,), self.color_changed)
-        self.parent_changed()
+            self.node.setCachedUserData("houtils:default_color", self.node.color())
 
+        self.node.addEventCallback(
+            (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
+            self.parent_changed,
+        )
+        self.node.addEventCallback(
+            (hou.nodeEventType.AppearanceChanged,), self.color_changed
+        )
+        self.parent_changed()
 
     def color_changed(self, event_type: hou.nodeEventType, **kwargs):
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
@@ -43,8 +46,8 @@ class Auto_Color:
         if self.leader:
             if not self.node.inputs() and self.node.cachedUserData("houtils:auto"):
                 self.set_color(self.node, default_node_color(self.node))
-
             self.flood_color()
+
         elif leader := self.find_leader():
             color = leader.color()
             if self.check_default_color(leader, color):
@@ -67,12 +70,13 @@ class Auto_Color:
             if input.cachedUserData("houtils:leader"):
                 return input
 
-            parents = [
+            parents = (
                 inp
-                for inp in input.inputs()
+                for inp in reversed(input.inputs())
                 if inp is not None and inp.parent() == container
-            ]
-            queue.extendleft(reversed(parents))
+            )
+
+            queue.extendleft(parents)
             store.add(input)
 
     def calc_leader(self) -> bool:
@@ -80,6 +84,7 @@ class Auto_Color:
         default = self.check_default_color(self.node, color)
         container = self.node.parent()
         leader = False if self.check_in_out(self.node) else True
+        is_auto = self.node.cachedUserData("houtils:auto")
 
         queue = deque(self.node.inputs())
         store = set()
@@ -92,19 +97,18 @@ class Auto_Color:
                 continue
 
             if not self.check_in_out(input) and (
-                default
-                or (color == input.color())
-                or self.node.cachedUserData("houtils:auto")
+                default or (color == input.color()) or is_auto
             ):
                 leader = False
                 break
 
-            parents = [
-                input
-                for input in input.inputs()
-                if input is not None and input.parent() == container
-            ]
-            queue.extendleft(reversed(parents))
+            parents = (
+                inp
+                for inp in reversed(input.inputs())
+                if inp is not None and inp.parent() == container
+            )
+
+            queue.extendleft(parents)
             store.add(input)
 
         return leader
@@ -123,21 +127,19 @@ class Auto_Color:
                 ((child := current[0]) is None)
                 or (child in store)
                 or (child.cachedUserData("houtils:leader"))
-                # or (current[2] != child.inputsWithIndices(True)[0][2])
-                or (current[1] != 0)
+                or (current[2] != child.inputsWithIndices(True)[0][2])
                 or (self.check_in_out(child))
             ):
                 continue
 
-            if not self.check_in_out(child):
-                if not (apply_color := color):
-                    apply_color = default_node_color(child)
-                self.set_color(child, apply_color)
+            final_color = color if color else default_node_color(child)
+            self.set_color(child, final_color)
             queue.extend(child.outputsWithIndices(True))
+            store.add(child)
 
     @staticmethod
     def check_in_out(node: hou.OpNode) -> bool:
-        return (name := node.name()).startswith("OUT") or name.startswith("IN")
+        return node.name().startswith(("OUT", "IN"))
 
     @staticmethod
     def check_default_color(node: hou.OpNode, color: hou.Color | None = None) -> bool:
