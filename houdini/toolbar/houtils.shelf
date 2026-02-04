@@ -10,6 +10,7 @@
     <memberTool name="toggle_update_mode"/>
     <memberTool name="reload_modules"/>
     <memberTool name="clear_colors"/>
+    <memberTool name="toggle_color_mode"/>
   </toolshelf>
 
   <tool name="recook" label="Recook" icon="MISC_cook">
@@ -25,6 +26,7 @@
       <contextNetType>DOP</contextNetType>
       <contextNetType>TOP</contextNetType>
       <contextNetType>LOP</contextNetType>
+      <contextNetType>COP</contextNetType>
     </toolMenuContext>
     <toolSubmenu>Houtils</toolSubmenu>
     <script scriptType="python"><![CDATA[from houtils.tools import recook
@@ -52,6 +54,7 @@ toggle_update()]]></script>
       <contextNetType>DOP</contextNetType>
       <contextNetType>TOP</contextNetType>
       <contextNetType>LOP</contextNetType>
+      <contextNetType>COP</contextNetType>
     </toolMenuContext>
     <toolSubmenu>Houtils</toolSubmenu>
     <script scriptType="python"><![CDATA[from houtils.tools import reload_modules
@@ -76,5 +79,10 @@ reload_modules()]]></script>
     <toolSubmenu>Houtils</toolSubmenu>
     <script scriptType="python"><![CDATA[from houtils.tools import clear_colors
 clear_colors()]]></script>
+  </tool>
+
+  <tool name="toggle_color_mode" label="Toggle Color Mode" icon="COP_channelextract">
+    <script scriptType="python"><![CDATA[from houtils.tools import toggle_color_mode
+toggle_color_mode()]]></script>
   </tool>
 </shelfDocument>

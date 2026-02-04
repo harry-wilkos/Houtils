@@ -5,18 +5,13 @@ from houtils.utils.ui import background_notify
 def main():
     with hou.undos.disabler():
         update_mode = hou.updateModeSetting()
-        pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
         if update_mode == hou.updateMode.Manual:
             hou.setUpdateMode(hou.updateMode.AutoUpdate)
-            if pane:
-                background_notify(
-                    hou.findFile("config/Icons/automatic_update.png"),
-                    pane=pane,  # pyright: ignore[reportArgumentType]
-                )
+            background_notify(
+                hou.findFile("config/Icons/automatic_update.png"),
+            )
         else:
             hou.setUpdateMode(hou.updateMode.Manual)
-            if pane:
-                background_notify(
-                    hou.findFile("config/Icons/manual_update.png"),
-                    pane=pane,  # pyright: ignore[reportArgumentType]
-                )
+            background_notify(
+                hou.findFile("config/Icons/manual_update.png"),
+            )
