@@ -21,7 +21,7 @@ class Auto_Color:
         self.node.addEventCallback(
             (hou.nodeEventType.AppearanceChanged,), self.color_changed
         )
-        if not loading and not self.node.inputs:
+        if not loading:
             self.parent_changed()
 
     def color_changed(self, event_type: hou.nodeEventType, **kwargs):
