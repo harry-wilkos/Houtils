@@ -26,6 +26,11 @@
 					"keys":["Ctrl+Shift+C"
 					]
 				},
+				{
+					"action":"h.tool:set_manual_color",
+					"keys":["Ctrl+Shift+E"
+					]
+				},
 			]
 		},
 	]

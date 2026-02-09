@@ -11,6 +11,7 @@
     <memberTool name="reload_modules"/>
     <memberTool name="clear_colors"/>
     <memberTool name="toggle_color_mode"/>
+    <memberTool name="set_manual_color"/>
   </toolshelf>
 
   <tool name="recook" label="Recook" icon="MISC_cook">
@@ -84,5 +85,10 @@ clear_colors()]]></script>
   <tool name="toggle_color_mode" label="Toggle Color Mode" icon="COP_channelextract">
     <script scriptType="python"><![CDATA[from houtils.tools import toggle_color_mode
 toggle_color_mode()]]></script>
+  </tool>
+
+  <tool name="set_manual_color" label="Set Manual Color" icon="BUTTONS_chooser_color">
+    <script scriptType="python"><![CDATA[from houtils.tools import set_manual_color
+set_manual_color()]]></script>
   </tool>
 </shelfDocument>

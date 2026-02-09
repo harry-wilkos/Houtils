@@ -1,3 +1,4 @@
+import re
 from collections import deque
 
 import hdefereval
@@ -21,29 +22,53 @@ class Auto_Color:
         self.node.addEventCallback(
             (hou.nodeEventType.AppearanceChanged,), self.color_changed
         )
+
         if not loading:
+            if not hou.session.houtils_auto_color:
+                self.node.setColor(hou.session.houtils_manual_color)
             self.parent_changed()
 
     def color_changed(self, event_type: hou.nodeEventType, **kwargs):
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
             return
 
-        # if not in edit mode change this
         self.node.setCachedUserData("houtils:auto", False)
-
         if self.check_in_out(self.node):
             for out in self.node.outputs():
                 out.setCachedUserData("houtils:leader", True)
                 out.setCachedUserData("houtils:auto", False)
 
-        self.leader = self.calc_leader()
-        self.flood_color()
+        leader = self.calc_leader()
+        if not hou.session.houtils_auto_color:
+            if not self.leader and leader:
+                self.node.setCachedUserData("houtils:auto", False)
+                for out in self.node.outputs():
+                    out.setCachedUserData("houtils:leader", True)
+                    out.setCachedUserData("houtils:auto", False)
+        else:
+            self.flood_color()
+        self.leader = leader
 
         if self.check_default_color(self.node):
             self.node.setCachedUserData("houtils:auto", True)
+        elif not hou.session.houtils_auto_color:
+            hou.setSessionModuleSource(
+                re.sub(
+                    r"(houtils_manual_color\s*=\s*)\w.+",
+                    rf"\g<1>hou.Color({self.node.color().rgb()})",
+                    hou.sessionModuleSource(),
+                )
+            )
 
     def parent_changed(self, event_type: hou.nodeEventType | None = None, **kwargs):
-        self.leader = self.calc_leader()
+        leader = self.calc_leader()
+        if not hou.session.houtils_auto_color:
+            if not self.leader and leader:
+                self.node.setCachedUserData("houtils:auto", False)
+            self.leader = leader
+            return
+
+        self.leader = leader
         if self.leader:
             if not self.node.inputs() and self.node.cachedUserData("houtils:auto"):
                 self.set_color(self.node, default_node_color(self.node))
@@ -84,7 +109,11 @@ class Auto_Color:
         color = self.node.color()
         default = self.check_default_color(self.node, color)
         container = self.node.parent()
-        leader = False if self.check_in_out(self.node) else True
+
+        if self.check_in_out(self.node):
+            return False
+
+        leader = True
         is_auto = self.node.cachedUserData("houtils:auto")
 
         queue = deque(self.node.inputs())
@@ -97,11 +126,19 @@ class Auto_Color:
             ):
                 continue
 
-            if not self.check_in_out(input) and (
-                default or (color == input.color()) or is_auto
+            ignore = self.check_in_out(input)
+
+            if not ignore and (
+                default
+                or (color == input.color())
+                or (is_auto and hou.session.houtils_auto_color)
             ):
                 leader = False
                 break
+
+            store.add(input)
+            if not ignore:
+                continue
 
             parents = (
                 inp
@@ -110,7 +147,6 @@ class Auto_Color:
             )
 
             queue.extendleft(parents)
-            store.add(input)
 
         return leader
 
