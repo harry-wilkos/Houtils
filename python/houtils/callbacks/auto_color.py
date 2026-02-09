@@ -1,9 +1,13 @@
-import re
 from collections import deque
 
 import hdefereval
 import hou
 from houtils.utils.ui import default_node_color
+
+session = hou.session
+key_auto = "houtils:auto"
+key_leader = "houtils:leader"
+key_default = "houtils:default_color"
 
 
 class Auto_Color:
@@ -13,7 +17,7 @@ class Auto_Color:
 
     def deferred_init(self, loading: bool):
         if not loading:
-            self.node.setCachedUserData("houtils:default_color", self.node.color())
+            self.node.setCachedUserData(key_default, self.node.color())
 
         self.node.addEventCallback(
             (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
@@ -24,53 +28,47 @@ class Auto_Color:
         )
 
         if not loading:
-            if not hou.session.houtils_auto_color:
-                self.node.setColor(hou.session.houtils_manual_color)
+            if not session.houtils_auto_color:
+                self.node.setColor(session.houtils_manual_color)
             self.parent_changed()
 
     def color_changed(self, event_type: hou.nodeEventType, **kwargs):
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
             return
 
-        self.node.setCachedUserData("houtils:auto", False)
+        self.node.setCachedUserData(key_auto, False)
         if self.check_in_out(self.node):
             for out in self.node.outputs():
-                out.setCachedUserData("houtils:leader", True)
-                out.setCachedUserData("houtils:auto", False)
+                out.setCachedUserData(key_leader, True)
+                out.setCachedUserData(key_auto, False)
 
         leader = self.calc_leader()
-        if not hou.session.houtils_auto_color:
+        if not session.houtils_auto_color:
             if not self.leader and leader:
-                self.node.setCachedUserData("houtils:auto", False)
+                self.node.setCachedUserData(key_auto, False)
                 for out in self.node.outputs():
-                    out.setCachedUserData("houtils:leader", True)
-                    out.setCachedUserData("houtils:auto", False)
+                    out.setCachedUserData(key_leader, True)
+                    out.setCachedUserData(key_auto, False)
         else:
             self.flood_color()
         self.leader = leader
 
         if self.check_default_color(self.node):
-            self.node.setCachedUserData("houtils:auto", True)
-        elif not hou.session.houtils_auto_color:
-            hou.setSessionModuleSource(
-                re.sub(
-                    r"(houtils_manual_color\s*=\s*)\w.+",
-                    rf"\g<1>hou.Color({self.node.color().rgb()})",
-                    hou.sessionModuleSource(),
-                )
-            )
+            self.node.setCachedUserData(key_auto, True)
+        elif not session.houtils_auto_color:
+            session.houtils_manual_color = self.node.color()
 
     def parent_changed(self, event_type: hou.nodeEventType | None = None, **kwargs):
         leader = self.calc_leader()
-        if not hou.session.houtils_auto_color:
+        if not session.houtils_auto_color:
             if not self.leader and leader:
-                self.node.setCachedUserData("houtils:auto", False)
+                self.node.setCachedUserData(key_auto, False)
             self.leader = leader
             return
 
         self.leader = leader
         if self.leader:
-            if not self.node.inputs() and self.node.cachedUserData("houtils:auto"):
+            if not self.node.inputs() and self.node.cachedUserData(key_auto):
                 self.set_color(self.node, default_node_color(self.node))
             self.flood_color()
 
@@ -93,7 +91,7 @@ class Auto_Color:
                 or (input.parent() != container)
             ):
                 continue
-            if input.cachedUserData("houtils:leader"):
+            if input.cachedUserData(key_leader):
                 return input
 
             parents = (
@@ -114,7 +112,7 @@ class Auto_Color:
             return False
 
         leader = True
-        is_auto = self.node.cachedUserData("houtils:auto")
+        is_auto = self.node.cachedUserData(key_auto)
 
         queue = deque(self.node.inputs())
         store = set()
@@ -131,7 +129,7 @@ class Auto_Color:
             if not ignore and (
                 default
                 or (color == input.color())
-                or (is_auto and hou.session.houtils_auto_color)
+                or (is_auto and session.houtils_auto_color)
             ):
                 leader = False
                 break
@@ -163,7 +161,7 @@ class Auto_Color:
             if (
                 ((child := current[0]) is None)
                 or (child in store)
-                or (child.cachedUserData("houtils:leader"))
+                or (child.cachedUserData(key_leader))
                 or (current[2] != child.inputsWithIndices(True)[0][2])
                 or (self.check_in_out(child))
             ):
@@ -186,12 +184,12 @@ class Auto_Color:
     @staticmethod
     def set_color(node: hou.OpNode, color: hou.Color):
         node.setColor(color)
-        node.setCachedUserData("houtils:auto", True)
+        node.setCachedUserData(key_auto, True)
 
     @property
     def leader(self) -> bool:
-        return self.node.cachedUserData("houtils:leader")
+        return self.node.cachedUserData(key_leader)
 
     @leader.setter
     def leader(self, state: bool):
-        self.node.setCachedUserData("houtils:leader", state)
+        self.node.setCachedUserData(key_leader, state)
