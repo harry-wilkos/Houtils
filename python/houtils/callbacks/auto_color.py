@@ -28,7 +28,7 @@ class Auto_Color:
         )
 
         if not loading:
-            if not session.houtils_auto_color:
+            if not session.houtils_auto_color and session.houtils_manual_color:
                 self.node.setColor(session.houtils_manual_color)
             self.parent_changed()
 
