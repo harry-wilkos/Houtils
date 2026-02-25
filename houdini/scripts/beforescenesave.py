@@ -3,7 +3,8 @@ import re
 import hou
 
 session = hou.session
-manual_color = color.rgb() if (color := session.houtils_manual_color) else None
+manual_color = color.rgb() if ( (hasattr(session, "houtils_manual_color")) and (color := session.houtils_manual_color)) else None
+auto_color = session.houtils_auto_color if hasattr(session, "houtils_manual_color")  else False
 source = re.sub(
     r"(houtils_manual_color\s*=\s*)\w.+",
     rf"\g<1>hou.Color({manual_color})",
@@ -13,7 +14,7 @@ source = re.sub(
 hou.setSessionModuleSource(
     re.sub(
         r"(houtils_auto_color\s*=\s*)\w.+",
-        rf"\g<1>{session.houtils_auto_color}",
+        rf"\g<1>{auto_color}",
         source,
     )
 )
