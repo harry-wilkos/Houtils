@@ -28,7 +28,7 @@
 + Create evenly segmented volumes, points or primitives with **Slice**
 + Resample or rasterize point attributes attributes with **Voxels from Camera** to calculate the voxels size relative to the camera
 + Opencl based **Pack Point Scale** to approximate the pscale of given points  without overlap
-+ Visualize vector volumes efficiently using *Volume Trail Visualization*
++ Visualize vector volumes efficiently using **Volume Trail Visualization**
 
 #### Tweks:
 + Automatically format nodes starting with *In* or *Out*
