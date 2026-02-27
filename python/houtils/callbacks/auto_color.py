@@ -113,6 +113,8 @@ class Auto_Color:
 
         leader = True
         is_auto = self.node.cachedUserData(key_auto)
+        existing_leader = self.node.cachedUserData(key_leader)
+        manual_color = session.houtils_manual_color
 
         queue = deque(self.node.inputs())
         store = set()
@@ -128,10 +130,15 @@ class Auto_Color:
 
             if not ignore and (
                 default
-                or (color == input.color())
                 or (is_auto and session.houtils_auto_color)
             ):
                 leader = False
+                break
+            elif color == input.color():
+                if color == manual_color:
+                    leader = existing_leader
+                else:
+                    leader = False
                 break
 
             store.add(input)
