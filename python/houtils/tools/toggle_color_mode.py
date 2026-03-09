@@ -1,5 +1,6 @@
 import hou
 from houtils.utils.ui import background_notify
+from .set_manual_color import main as set_manual_color
 
 session = hou.session
 
@@ -11,8 +12,5 @@ def main():
         else:
             background_notify(hou.findFile("config/Icons/manual_color.png"))
             if not session.houtils_manual_color:
-                color = None
-                while not color:
-                    color = hou.ui.selectColor() 
-                session.houtils_manual_color = color
+                set_manual_color()
         session.houtils_auto_color = color_status
