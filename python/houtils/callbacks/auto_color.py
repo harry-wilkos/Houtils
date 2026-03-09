@@ -5,9 +5,9 @@ import hou
 from houtils.utils.ui import default_node_color
 
 session = hou.session
+
 key_auto = "houtils:auto"
 key_leader = "houtils:leader"
-key_default = "houtils:default_color"
 
 
 class Auto_Color:
@@ -17,7 +17,7 @@ class Auto_Color:
 
     def deferred_init(self, loading: bool):
         if not loading:
-            self.node.setCachedUserData(key_default, self.node.color())
+            self.node.setUserData("houtils:default_color", " ".join(map(str, self.node.color().rgb())))
 
         self.node.addEventCallback(
             (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
@@ -36,25 +36,25 @@ class Auto_Color:
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
             return
 
-        self.node.setCachedUserData(key_auto, False)
+        self.node.setUserData(key_auto, "0")
         if self.check_in_out(self.node):
             for out in self.node.outputs():
-                out.setCachedUserData(key_leader, True)
-                out.setCachedUserData(key_auto, False)
+                out.setUserData(key_leader, "1")
+                out.setUserData(key_auto, "0")
 
         leader = self.calc_leader()
         if not session.houtils_auto_color:
             if not self.leader and leader:
-                self.node.setCachedUserData(key_auto, False)
+                self.node.setUserData(key_auto, "0")
                 for out in self.node.outputs():
-                    out.setCachedUserData(key_leader, True)
-                    out.setCachedUserData(key_auto, False)
+                    out.setUserData(key_leader, "1")
+                    out.setUserData(key_auto, "0")
         else:
             self.flood_color()
         self.leader = leader
 
         if self.check_default_color(self.node):
-            self.node.setCachedUserData(key_auto, True)
+            self.node.setUserData(key_auto, "1")
         elif not session.houtils_auto_color:
             session.houtils_manual_color = self.node.color()
 
@@ -62,13 +62,13 @@ class Auto_Color:
         leader = self.calc_leader()
         if not session.houtils_auto_color:
             if not self.leader and leader:
-                self.node.setCachedUserData(key_auto, False)
+                self.node.setUserData(key_auto, "0")
             self.leader = leader
             return
 
         self.leader = leader
         if self.leader:
-            if not self.node.inputs() and self.node.cachedUserData(key_auto):
+            if not self.node.inputs() and int(self.node.userData(key_auto) or False):
                 self.set_color(self.node, default_node_color(self.node))
             self.flood_color()
 
@@ -91,7 +91,7 @@ class Auto_Color:
                 or (input.parent() != container)
             ):
                 continue
-            if input.cachedUserData(key_leader):
+            if int(input.userData(key_leader) or False):
                 return input
 
             parents = (
@@ -112,8 +112,8 @@ class Auto_Color:
             return False
 
         leader = True
-        is_auto = self.node.cachedUserData(key_auto)
-        existing_leader = self.node.cachedUserData(key_leader)
+        is_auto = int(self.node.userData(key_auto) or False)
+        existing_leader = int(self.node.userData(key_leader) or False)
         manual_color = session.houtils_manual_color
 
         queue = deque(self.node.inputs())
@@ -168,7 +168,7 @@ class Auto_Color:
             if (
                 ((child := current[0]) is None)
                 or (child in store)
-                or (child.cachedUserData(key_leader))
+                or (int(child.userData(key_leader) or False))
                 or (current[2] != child.inputsWithIndices(True)[0][2])
                 or (self.check_in_out(child))
             ):
@@ -191,12 +191,12 @@ class Auto_Color:
     @staticmethod
     def set_color(node: hou.OpNode, color: hou.Color):
         node.setColor(color)
-        node.setCachedUserData(key_auto, True)
+        node.setUserData(key_auto, "1")
 
     @property
     def leader(self) -> bool:
-        return self.node.cachedUserData(key_leader)
+        return bool(int(self.node.userData(key_leader) or False))
 
     @leader.setter
     def leader(self, state: bool):
-        self.node.setCachedUserData(key_leader, state)
+        self.node.setUserData(key_leader, str(int(state)))
