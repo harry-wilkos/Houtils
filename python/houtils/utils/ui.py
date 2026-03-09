@@ -55,4 +55,8 @@ def background_notify(
 
 
 def default_node_color(node: hou.OpNode) -> hou.Color:    
-    return node.cachedUserData("houtils:default_color") or node.type().defaultColor()
+    if (stored_color := node.userData("houtils:default_color")):
+        color = hou.Color(tuple(map(float, stored_color.split())))
+    else:
+        color = node.type().defaultColor()
+    return color
