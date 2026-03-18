@@ -1,5 +1,6 @@
 import hou
-from houtils.utils.ui import background_notify, default_node_color
+from houtils.utils.ui import background_notify
+from houtils.utils.node import default_node_color
 
 def main():
     with hou.undos.group("All nodes set to their default color"):

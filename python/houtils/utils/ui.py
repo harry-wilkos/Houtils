@@ -52,11 +52,3 @@ def background_notify(
             hou.ui.removeEventLoopCallback(run)
 
     hou.ui.addEventLoopCallback(run)
-
-
-def default_node_color(node: hou.OpNode) -> hou.Color:    
-    if (stored_color := node.userData("houtils:default_color")):
-        color = hou.Color(tuple(map(float, stored_color.split())))
-    else:
-        color = node.type().defaultColor()
-    return color
