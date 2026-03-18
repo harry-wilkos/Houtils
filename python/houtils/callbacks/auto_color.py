@@ -112,8 +112,8 @@ class Auto_Color:
             return False
 
         leader = True
-        is_auto = int(self.node.userData(key_auto) or False)
-        existing_leader = int(self.node.userData(key_leader) or False)
+        is_auto = bool(int(self.node.userData(key_auto) or False))
+        existing_leader = bool(int(self.node.userData(key_leader) or False))
         manual_color = session.houtils_manual_color
 
         queue = deque(self.node.inputs())
