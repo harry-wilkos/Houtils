@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Iterator
+from typing import Iterator, Tuple
 
 import hou
 
@@ -12,7 +12,11 @@ def default_node_color(node: hou.OpNode) -> hou.Color:
     return color
 
 
-def traverse_up(node: hou.OpNode) -> Iterator[hou.OpNode]:
+class TraversalState:
+    def __init__(self):
+        self.skip = False
+
+def traverse_up(node: hou.OpNode) -> Iterator[Tuple[hou.OpNode, TraversalState]]:
     queue = deque(node.inputs())
     store = set()
     container = node.parent()
@@ -23,7 +27,15 @@ def traverse_up(node: hou.OpNode) -> Iterator[hou.OpNode]:
             or (input.parent() != container)
         ):
             continue
-        yield input
+        
+        state = TraversalState()
+
+        yield input, state
+
+        store.add(input)
+        if state.skip:
+            continue
+
         parents = (
             inp
             for inp in reversed(input.inputs())
@@ -31,10 +43,9 @@ def traverse_up(node: hou.OpNode) -> Iterator[hou.OpNode]:
         )
 
         queue.extendleft(parents)
-        store.add(input)
 
 
-def traverse_down(node: hou.OpNode) -> Iterator[hou.OpNode]:
+def traverse_down(node: hou.OpNode) -> Iterator[Tuple[hou.OpNode, TraversalState]]:
     queue = deque(node.outputsWithIndices(True))
     store = set()
     while queue:
@@ -45,6 +56,13 @@ def traverse_down(node: hou.OpNode) -> Iterator[hou.OpNode]:
             or (current[2] != child.inputsWithIndices(True)[0][2])
         ):
             continue
-        yield child
-        queue.extend(child.outputsWithIndices(True))
+
+        state = TraversalState()
+
+        yield child, state
+
         store.add(child)
+        if state.skip:
+            continue
+
+        queue.extend(child.outputsWithIndices(True))

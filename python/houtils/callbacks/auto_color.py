@@ -8,11 +8,13 @@ session = hou.session
 
 key_auto = "houtils:auto"
 key_leader = "houtils:leader"
+block_begins = ("compile_begin", "block_begin")
 
 
 class Auto_Color:
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
+        self.block_begin = self.node.type().name() in block_begins
         hdefereval.executeDeferred(lambda: self.deferred_init(kwargs["loading"]))
 
     def deferred_init(self, loading: bool):
@@ -39,7 +41,7 @@ class Auto_Color:
             return
 
         self.node.setUserData(key_auto, "0")
-        if self.check_in_out(self.node):
+        if self.check_in_out(self.node) and not self.check_block(self.node):
             for out in self.node.outputs():
                 out.setUserData(key_leader, "1")
                 out.setUserData(key_auto, "0")
@@ -51,6 +53,8 @@ class Auto_Color:
                 for out in self.node.outputs():
                     out.setUserData(key_leader, "1")
                     out.setUserData(key_auto, "0")
+        elif self.block_begin:
+            self.flood_color(force=True)
         else:
             self.flood_color()
         self.leader = leader
@@ -62,6 +66,7 @@ class Auto_Color:
 
     def parent_changed(self, event_type: hou.nodeEventType | None = None, **kwargs):
         leader = self.calc_leader()
+
         if not session.houtils_auto_color:
             if not self.leader and leader:
                 self.node.setUserData(key_auto, "0")
@@ -69,27 +74,33 @@ class Auto_Color:
             return
 
         self.leader = leader
-        if self.leader:
+        if leader:
             if not self.node.inputs() and int(self.node.userData(key_auto) or False):
-                self.set_color(self.node, default_node_color(self.node))
+                color = default_node_color(self.node)
+                if (
+                    self.block_begin
+                    and (block_end := self.node.node(self.node.evalParm("blockpath")))
+                    and (leader_node := self.find_leader(block_end))
+                    and leader_node != self.node
+                ):
+                    leader_color = leader_node.color()
+                    if self.check_default_color(leader_node, leader_color):
+                        color = default_node_color(self.node)
+                    else:
+                        color = leader_color
+                self.set_color(self.node, color)
             self.flood_color()
-
-        elif leader := self.find_leader():
-            color = leader.color()
-            if self.check_default_color(leader, color):
+        elif leader_node := self.find_leader():
+            color = leader_node.color()
+            if self.check_default_color(leader_node, color):
                 color = default_node_color(self.node)
             if not self.check_in_out(self.node):
                 self.set_color(self.node, color)
             self.flood_color(color)
 
-    def calc_block(self) -> bool:
-        block = False
-        for node in traverse_up(self.node):
-            print(node)
-        return block
-
-    def find_leader(self) -> hou.OpNode | None:
-        for input in traverse_up(self.node):
+    def find_leader(self, node: hou.OpNode | None = None) -> hou.OpNode | None:
+        node = node if node else self.node
+        for input, state in traverse_up(node):
             if int(input.userData(key_leader) or False):
                 return input
 
@@ -105,7 +116,7 @@ class Auto_Color:
         existing_leader = bool(int(self.node.userData(key_leader) or False))
         manual_color = session.houtils_manual_color
 
-        for input in traverse_up(self.node):
+        for input, state in traverse_up(self.node):
             ignore = self.check_in_out(input)
             if not ignore and (default or (is_auto and session.houtils_auto_color)):
                 leader = False
@@ -118,7 +129,7 @@ class Auto_Color:
                 break
         return leader
 
-    def flood_color(self, color: hou.Color | None = None):
+    def flood_color(self, color: hou.Color | None = None, force: bool = False):
         if self.check_in_out(self.node):
             return
 
@@ -126,17 +137,37 @@ class Auto_Color:
         if self.check_default_color(self.node, color):
             color = None
 
-        for child in traverse_down(self.node):
-            if (int(child.userData(key_leader) or False)) and (
-                child.color() == color or (not color and default_node_color(child))
-            ):
-                child.setUserData(key_leader, "0")
-                child.setUserData(key_auto, "1")
+        for child, state in traverse_down(self.node):
+            if int(child.userData(key_leader) or False):
+                if child.color() == color or (not color and default_node_color(child)):
+                    child.setUserData(key_leader, "0")
+                    child.setUserData(key_auto, "1")
+                else:
+                    state.skip = True
+                    continue
             elif self.check_in_out(child):
+                if not force:
+                    state.skip = True
                 continue
 
             final_color = color if color else default_node_color(child)
             self.set_color(child, final_color)
+
+    @staticmethod
+    def check_block(node: hou.OpNode) -> bool:
+        block = False
+        for node, state in traverse_up(node):
+            if node.type().name() in block_begins:
+                block_end = node.node(node.evalParm("blockpath"))
+                if not block_end:
+                    continue
+                for child, state in traverse_down(node):
+                    if child == block_end:
+                        block = True
+                        break
+            if block:
+                break
+        return block
 
     @staticmethod
     def check_in_out(node: hou.OpNode) -> bool:
