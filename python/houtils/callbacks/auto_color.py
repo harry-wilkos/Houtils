@@ -72,7 +72,7 @@ class Auto_Color:
                 self.flood_color(force=True)
             else:
                 self.flood_color()
-                
+
             self.leader = leader
 
             if self.check_default_color(self.node):
@@ -80,7 +80,7 @@ class Auto_Color:
                     self.node.setUserData(key_auto, "1")
             elif not session.houtils_auto_color:
                 session.houtils_manual_color = self.node.color()
-                
+
         finally:
             Auto_Color.depth -= 1
             if Auto_Color.depth == 0:
@@ -90,10 +90,10 @@ class Auto_Color:
         node_path = self.node.path()
         if node_path in Auto_Color.history:
             return
-            
+
         Auto_Color.depth += 1
         Auto_Color.history.add(node_path)
-        
+
         try:
             leader = self.calc_leader()
 
@@ -151,8 +151,8 @@ class Auto_Color:
             return False
 
         leader = True
-        is_auto = bool(int(self.node.userData(key_auto) or False))
-        existing_leader = bool(int(self.node.userData(key_leader) or False))
+        is_auto = self.node.userData(key_auto) == "1"
+        existing_leader = self.node.userData(key_leader) == "1"
         manual_color = session.houtils_manual_color
 
         for input, state in traverse_up(self.node):
@@ -166,6 +166,8 @@ class Auto_Color:
                 else:
                     leader = False
                 break
+            if not ignore:
+                state.skip = True
         return leader
 
     def flood_color(self, color: hou.Color | None = None, force: bool = False):
