@@ -14,24 +14,39 @@ model = None
 store = {}
 
 
-def get_indexes(model, parent=QModelIndex()):
-    indexes = []
-    for row in range(model.rowCount(parent)):
-        if (index := model.index(row, 0, parent)).isValid():
-            indexes.append(index)
-            if model.hasChildren(index):
-                indexes.extend(get_indexes(model, index))
-    return indexes
-
-
-def expand():
+def store_state(parent=QModelIndex()):
     global model
     global tree
 
-    for index in get_indexes(model):
-        data = index.data(0)
-        if not data in store or store[data]:
-            tree.expand(index)  # pyright: ignore[reportOptionalMemberAccess]
+    if not model or not tree:
+        return
+
+    for row in range(model.rowCount(parent)):
+        index = model.index(row, 0, parent)
+        if index.isValid():
+            store[index.data(0)] = tree.isExpanded(index)
+            if model.hasChildren(index):
+                store_state(index)
+
+
+def expand(parent=QModelIndex()):
+    global model
+    global tree
+
+    if not model or not tree:
+        return
+
+    for row in range(model.rowCount(parent)):
+        index = model.index(row, 0, parent)
+        if index.isValid():
+            data = index.data(0)
+            should_expand = store.get(data, True)
+            if should_expand:
+                tree.expand(index)
+            else:
+                tree.collapse(index)
+            if model.hasChildren(index):
+                expand(index)
 
 
 def onCreateInterface():
@@ -79,12 +94,10 @@ def onNodePathChanged(node):
     global model
     global store
 
-    for index in get_indexes(model):
-        store[index.data(0)] = tree.isExpanded(  # pyright: ignore[reportOptionalMemberAccess]
-            index
-        )
+    store_state()
 
     panel._panePathChanged(node)  # pyright: ignore[reportOptionalMemberAccess]
+
     hdefereval.executeDeferred(expand)
 
 
