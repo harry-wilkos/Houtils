@@ -31,6 +31,7 @@ class Auto_Color:
         self.node.addEventCallback(
             (hou.nodeEventType.AppearanceChanged,), self.color_changed
         )
+        print(f"adding callback to {self.node}")
 
         if not loading:
             if not session.houtils_auto_color and session.houtils_manual_color:
@@ -159,15 +160,17 @@ class Auto_Color:
             ignore = self.check_in_out(input)
             if not ignore and (default or (is_auto and session.houtils_auto_color)):
                 leader = False
-                break
+                # break
             elif color == input.color():
                 if color == manual_color:
                     leader = existing_leader
                 else:
                     leader = False
-                break
-            if not ignore:
-                state.skip = True
+                # break
+            # if not ignore:
+
+                # state.skip = True
+            break
         return leader
 
     def flood_color(self, color: hou.Color | None = None, force: bool = False):
