@@ -49,27 +49,40 @@ class Auto_Color_Manager:
     @classmethod
     def attach_callbacks(cls, kwargs: dict):
         node = kwargs["node"]
-        instance = None
 
-        if not kwargs["loading"]:
-            instance = Auto_Color(kwargs)
-            cls.cache[node.sessionId()] = instance
-
-        node.addEventCallback(
-            (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
-            cls.parent_changed_entry,
-        )
-        node.addEventCallback(
-            (hou.nodeEventType.AppearanceChanged,),
-            cls.color_changed_entry,
-        )
         node.addEventCallback(
             (hou.nodeEventType.BeingDeleted,),
             cls.clean_up,
         )
 
-        if instance:
-            hdefereval.executeDeferred(instance.deferred_init)
+        if kwargs["loading"]:
+            node.addEventCallback(
+                (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
+                cls.parent_changed_entry,
+            )
+            node.addEventCallback(
+                (hou.nodeEventType.AppearanceChanged,),
+                cls.color_changed_entry,
+            )
+        else:
+            instance = Auto_Color(kwargs)
+            cls.cache[node.sessionId()] = instance
+            hdefereval.executeDeferred(
+                lambda: (
+                    instance.deferred_init(),
+                    node.addEventCallback(
+                        (
+                            hou.nodeEventType.InputDataChanged,
+                            hou.nodeEventType.InputRewired,
+                        ),
+                        cls.parent_changed_entry,
+                    ),
+                    node.addEventCallback(
+                        (hou.nodeEventType.AppearanceChanged,),
+                        cls.color_changed_entry,
+                    ),
+                )
+            )
 
 
 class Auto_Color:
