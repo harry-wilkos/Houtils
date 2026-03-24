@@ -91,6 +91,7 @@ class Auto_Color:
 
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
+        self.id = self.node.sessionId()
         self.block_begin = self.node.type().name() in block_begins
 
     def deferred_init(self):
@@ -102,12 +103,11 @@ class Auto_Color:
         self.parent_changed()
 
     def color_changed(self):
-        node_path = self.node.path()
-        if node_path in Auto_Color.history:
+        if self.id in Auto_Color.history:
             return
 
         Auto_Color.depth += 1
-        Auto_Color.history.add(node_path)
+        Auto_Color.history.add(self.id)
 
         try:
             if self.node.userData(key_auto) != "0":
@@ -149,12 +149,11 @@ class Auto_Color:
                 Auto_Color.history.clear()
 
     def parent_changed(self):
-        node_path = self.node.path()
-        if node_path in Auto_Color.history:
+        if self.id in Auto_Color.history:
             return
 
         Auto_Color.depth += 1
-        Auto_Color.history.add(node_path)
+        Auto_Color.history.add(self.id)
 
         try:
             leader = self.calc_leader()
