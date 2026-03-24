@@ -9,6 +9,58 @@ key_leader = "houtils:leader"
 block_begins = frozenset(["compile_begin", "block_begin"])
 
 
+class Auto_Color_Manager:
+    cache = {}
+
+    @classmethod
+    def color_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
+        if kwargs["change_type"] != hou.appearanceChangeType.Color:
+            return
+
+        id = kwargs["node"].sessionId()
+        if id not in cls.cache:
+            cls.cache[id] = Auto_Color(kwargs)
+        cls.cache[id].color_changed()
+
+    @classmethod
+    def parent_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
+        id = kwargs["node"].sessionId()
+        if id not in cls.cache:
+            cls.cache[id] = Auto_Color(kwargs)
+        cls.cache[id].parent_changed()
+
+    @classmethod
+    def clean_up(cls, event_type: hou.nodeEventType, **kwargs: dict):
+        id = kwargs["node"].sessionId()
+        if id in cls.cache:
+            del cls.cache[id]
+
+    @classmethod
+    def attach_callbacks(cls, kwargs: dict):
+        node = kwargs["node"]
+        instance = None
+
+        if not kwargs["loading"]:
+            instance = Auto_Color(kwargs)
+            cls.cache[node.sessionId()] = instance
+
+        node.addEventCallback(
+            (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
+            cls.parent_changed_entry,
+        )
+        node.addEventCallback(
+            (hou.nodeEventType.AppearanceChanged,),
+            cls.color_changed_entry,
+        )
+        node.addEventCallback(
+            (hou.nodeEventType.BeingDeleted,),
+            cls.clean_up,
+        )
+
+        if instance:
+            hdefereval.executeDeferred(instance.deferred_init)
+
+
 class Auto_Color:
     depth = 0
     history = set()
@@ -16,31 +68,16 @@ class Auto_Color:
     def __init__(self, kwargs: dict):
         self.node = kwargs["node"]
         self.block_begin = self.node.type().name() in block_begins
-        hdefereval.executeDeferred(lambda: self.deferred_init(kwargs["loading"]))
 
-    def deferred_init(self, loading: bool):
-        if not loading:
-            default_color = " ".join(map(str, self.node.color().rgb()))
-            if self.node.userData("houtils:default_color") != default_color:
-                self.node.setUserData("houtils:default_color", default_color)
+    def deferred_init(self):
+        default_color = " ".join(map(str, self.node.color().rgb()))
+        if self.node.userData("houtils:default_color") != default_color:
+            self.node.setUserData("houtils:default_color", default_color)
+        if not session.houtils_auto_color and session.houtils_manual_color:
+            self.set_color(self.node, session.houtils_manual_color)
+        self.parent_changed()
 
-        self.node.addEventCallback(
-            (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
-            self.parent_changed,
-        )
-        self.node.addEventCallback(
-            (hou.nodeEventType.AppearanceChanged,), self.color_changed
-        )
-        print(f"adding callback to {self.node}")
-
-        if not loading:
-            if not session.houtils_auto_color and session.houtils_manual_color:
-                self.set_color(self.node, session.houtils_manual_color)
-            self.parent_changed()
-
-    def color_changed(self, event_type: hou.nodeEventType, **kwargs):
-        if kwargs["change_type"] != hou.appearanceChangeType.Color:
-            return
+    def color_changed(self):
         node_path = self.node.path()
         if node_path in Auto_Color.history:
             return
@@ -87,7 +124,7 @@ class Auto_Color:
             if Auto_Color.depth == 0:
                 Auto_Color.history.clear()
 
-    def parent_changed(self, event_type: hou.nodeEventType | None = None, **kwargs):
+    def parent_changed(self):
         node_path = self.node.path()
         if node_path in Auto_Color.history:
             return
@@ -169,7 +206,7 @@ class Auto_Color:
                 # break
             # if not ignore:
 
-                # state.skip = True
+            # state.skip = True
             break
         return leader
 
