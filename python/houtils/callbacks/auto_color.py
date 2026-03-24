@@ -16,24 +16,35 @@ class Auto_Color_Manager:
     def color_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
         if kwargs["change_type"] != hou.appearanceChangeType.Color:
             return
-
-        id = kwargs["node"].sessionId()
-        if id not in cls.cache:
-            cls.cache[id] = Auto_Color(kwargs)
-        cls.cache[id].color_changed()
+        try:
+            id = kwargs["node"].sessionId()
+            if id not in cls.cache:
+                cls.cache[id] = Auto_Color(kwargs)
+            cls.cache[id].color_changed()
+        except hou.ObjectWasDeleted:
+            pass
 
     @classmethod
     def parent_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
-        id = kwargs["node"].sessionId()
-        if id not in cls.cache:
-            cls.cache[id] = Auto_Color(kwargs)
-        cls.cache[id].parent_changed()
+        try:
+            id = kwargs["node"].sessionId()
+            if id not in cls.cache:
+                cls.cache[id] = Auto_Color(kwargs)
+            cls.cache[id].parent_changed()
+        except hou.ObjectWasDeleted:
+            pass
 
     @classmethod
     def clean_up(cls, event_type: hou.nodeEventType, **kwargs: dict):
-        id = kwargs["node"].sessionId()
-        if id in cls.cache:
-            del cls.cache[id]
+        if hou.hipFile.isShuttingDown():
+            cls.cache.clear()
+            return
+        try:
+            id = kwargs["node"].sessionId()
+            if id in cls.cache:
+                del cls.cache[id]
+        except hou.ObjectWasDeleted:
+            pass
 
     @classmethod
     def attach_callbacks(cls, kwargs: dict):
