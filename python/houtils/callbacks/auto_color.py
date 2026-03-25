@@ -95,7 +95,13 @@ class Auto_Color:
         self.block_begin = self.node.type().name() in block_begins
 
     def deferred_init(self):
-        default_color = " ".join(map(str, self.node.color().rgb()))
+        if self.block_begin and (
+            block_end := self.node.node(self.node.evalParm("blockpath"))
+        ):
+            default_color = block_end.userData("houtils:default_color")
+        else:
+            default_color = " ".join(map(str, self.node.color().rgb()))
+
         if self.node.userData("houtils:default_color") != default_color:
             self.node.setUserData("houtils:default_color", default_color)
         if not session.houtils_auto_color and session.houtils_manual_color:
