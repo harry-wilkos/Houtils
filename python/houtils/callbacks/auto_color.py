@@ -95,8 +95,10 @@ class Auto_Color:
         self.block_begin = self.node.type().name() in block_begins
 
     def deferred_init(self):
-        if self.block_begin and (
-            block_end := self.node.node(self.node.evalParm("blockpath"))
+        if (
+            self.block_begin
+            and self.node.inputs()
+            and (block_end := self.node.node(self.node.evalParm("blockpath")))
         ):
             default_color = block_end.userData("houtils:default_color")
         else:
@@ -233,6 +235,8 @@ class Auto_Color:
                 else:
                     leader = False
                 # break
+            elif ignore:
+                continue
             # if not ignore:
 
             # state.skip = True
