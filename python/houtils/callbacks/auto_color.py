@@ -1,8 +1,15 @@
 import hdefereval
 import hou
 from houtils.utils.node import default_node_color, traverse_down, traverse_up
+import re
 
 session = hou.session
+if (match := re.search(r"^untitled.hip*", hou.hipFile.name())):
+    hou.appendSessionModuleSource("houtils_auto_color = True")
+elif not hasattr(session, "houtils_auto_color"):
+    hou.appendSessionModuleSource("houtils_auto_color = False")
+if not hasattr(session, "houtils_manual_color"):
+    hou.appendSessionModuleSource("houtils_manual_color = None")
 
 key_auto = "houtils:auto"
 key_leader = "houtils:leader"
