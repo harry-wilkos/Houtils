@@ -1,10 +1,11 @@
+import re
+
 import hdefereval
 import hou
 from houtils.utils.node import default_node_color, traverse_down, traverse_up
-import re
 
-session = hou.session
-if (match := re.search(r"^untitled.hip*", hou.hipFile.name())):
+session = hou.session  # pyright: ignore[reportAttributeAccessIssue]
+if match := re.search(r"^untitled.hip*", hou.hipFile.name()):
     hou.appendSessionModuleSource("houtils_auto_color = True")
 elif not hasattr(session, "houtils_auto_color"):
     hou.appendSessionModuleSource("houtils_auto_color = False")
@@ -284,10 +285,10 @@ class Auto_Color:
         for parent, state in traverse_up(node):
             store.add(parent)
             if parent.type().name() in block_begins:
-                block_end = parent.node(parent.evalParm("blockpath"))
+                block_end = parent.node(str(parent.evalParm("blockpath")))
                 if not block_end:
                     continue
-                if not block_end in store:
+                if block_end not in store:
                     block = True
                     break
         return block
