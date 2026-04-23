@@ -128,7 +128,7 @@ class Auto_Color:
             if self.node.userData(key_auto) != "0":
                 self.node.setUserData(key_auto, "0")
 
-            if self.check_in_out(self.node) and not self.check_block(self.node):
+            if (in_out := self.check_in_out(self.node)) and not self.check_block(self.node):
                 for out in self.node.outputs():
                     if out.userData(key_leader) != "1":
                         out.setUserData(key_leader, "1")
@@ -155,7 +155,7 @@ class Auto_Color:
             if self.check_default_color(self.node):
                 if self.node.userData(key_auto) != "1":
                     self.node.setUserData(key_auto, "1")
-            elif not session.houtils_auto_color:
+            elif not session.houtils_auto_color and not in_out:
                 session.houtils_manual_color = self.node.color()
 
         finally:
