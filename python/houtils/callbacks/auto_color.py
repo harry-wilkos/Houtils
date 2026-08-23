@@ -17,276 +17,354 @@ key_leader = "houtils:leader"
 block_begins = frozenset(["compile_begin", "block_begin"])
 
 
-class Auto_Color_Manager:
-    cache = {}
+class Node:
+    """Ephemeral proxy wrapper for hou.OpNode to provide clean property syntax."""
+    def __init__(self, node: hou.OpNode):
+        self.node = node
 
-    @classmethod
-    def color_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
-        if kwargs["change_type"] != hou.appearanceChangeType.Color:
-            return
-        try:
-            id = kwargs["node"].sessionId()
-            if id not in cls.cache:
-                cls.cache[id] = Auto_Color(kwargs)
-            cls.cache[id].color_changed()
-        except hou.ObjectWasDeleted:
-            pass
+    def __getattr__(self, name):
+        return getattr(self.node, name)
 
-    @classmethod
-    def parent_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
-        try:
-            id = kwargs["node"].sessionId()
-            if id not in cls.cache:
-                cls.cache[id] = Auto_Color(kwargs)
-            cls.cache[id].parent_changed()
-        except hou.ObjectWasDeleted:
-            pass
+    def __eq__(self, other):
+        if isinstance(other, Node):
+            return self.node == other.node
+        return self.node == other
+        
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
-    @classmethod
-    def clean_up(cls, event_type: hou.nodeEventType, **kwargs: dict):
-        if hou.hipFile.isShuttingDown():
-            cls.cache.clear()
-            return
-        try:
-            id = kwargs["node"].sessionId()
-            if id in cls.cache:
-                del cls.cache[id]
-        except hou.ObjectWasDeleted:
-            pass
+    def __hash__(self):
+        return hash(self.node)
 
-    @classmethod
-    def attach_callbacks(cls, kwargs: dict):
-        node = kwargs["node"]
+    def set_color(self, color: hou.Color):
+        if self.node.color() != color:
+            self.node.setColor(color)
+        if self.node.userData(key_auto) != "1":
+            self.node.setUserData(key_auto, "1")
 
-        node.addEventCallback(
-            (hou.nodeEventType.BeingDeleted,),
-            cls.clean_up,
-        )
-
-        if kwargs["loading"]:
-            node.addEventCallback(
-                (hou.nodeEventType.InputDataChanged, hou.nodeEventType.InputRewired),
-                cls.parent_changed_entry,
-            )
-            node.addEventCallback(
-                (hou.nodeEventType.AppearanceChanged,),
-                cls.color_changed_entry,
-            )
-        else:
-            instance = Auto_Color(kwargs)
-            cls.cache[node.sessionId()] = instance
-            hdefereval.executeDeferred(
-                lambda: (
-                    instance.deferred_init(),
-                    node.addEventCallback(
-                        (
-                            hou.nodeEventType.InputDataChanged,
-                            hou.nodeEventType.InputRewired,
-                        ),
-                        cls.parent_changed_entry,
-                    ),
-                    node.addEventCallback(
-                        (hou.nodeEventType.AppearanceChanged,),
-                        cls.color_changed_entry,
-                    ),
-                )
-            )
+    @property
+    def leader(self) -> bool:
+        return bool(int(self.node.userData(key_leader) or False))
+    
+    @leader.setter
+    def leader(self, state: bool):
+        val = str(int(state))
+        if self.node.userData(key_leader) != val:
+            self.node.setUserData(key_leader, val)
 
 
 class Auto_Color:
-    depth = 0
-    history = set()
 
-    def __init__(self, kwargs: dict):
-        self.node = kwargs["node"]
-        self.id = self.node.sessionId()
-        self.block_begin = self.node.type().name() in block_begins
+    id_lookup = {}
 
-    def deferred_init(self):
+    scheduling_lock = False
+    processing_lock = False
+    cycle_history = set()
+    update_queue = []
+    
+    @classmethod
+    def attach_callbacks(cls, kwargs: dict):
+        node = kwargs["node"]
+        cls.id_lookup[node.sessionId()] = node
+
+        if kwargs.get("loading", False) or hou.hipFile.isLoadingHipFile():
+            cls.init_node(node, load=False)
+            node.addEventCallback((hou.nodeEventType.InputRewired,), cls.parent_changed_entry)
+            node.addEventCallback((hou.nodeEventType.AppearanceChanged,), cls.color_changed_entry)
+            node.addEventCallback((hou.nodeEventType.BeingDeleted,), cls.clean_up)
+        else:
+            hdefereval.executeDeferred(
+                lambda: (
+                    cls.init_node(node, load=True),
+                    node.addEventCallback((hou.nodeEventType.InputRewired,), cls.parent_changed_entry),
+                    node.addEventCallback((hou.nodeEventType.AppearanceChanged,), cls.color_changed_entry),
+                    node.addEventCallback((hou.nodeEventType.BeingDeleted,), cls.clean_up),
+                )
+            )
+
+    @classmethod
+    def init_node(cls, raw_node: hou.OpNode, load: bool = True):
+        """Unified node initialization for both file loading and interactive creation."""
+        node = Node(raw_node)
+        
         default_color = None
-        block_end = self.node.node(self.node.evalParm("blockpath")) if self.block_begin else None
-        if (
-            self.block_begin
-            and self.node.inputs()
-            and block_end):
+        block_begin = raw_node.type().name() in block_begins
+        block_end = raw_node.node(str(raw_node.evalParm("blockpath"))) if block_begin else None
+        
+        if block_begin and raw_node.inputs() and block_end:
             default_color = block_end.userData("houtils:default_color")
 
         if not default_color:
-            default_color = " ".join(map(str, self.node.color().rgb()))
-            if self.block_begin and block_end:
+            default_color = " ".join(map(str, raw_node.color().rgb()))
+            if block_begin and block_end:
                 block_end.setUserData("houtils:default_color", default_color)
+        
+        if not raw_node.userData("houtils:default_color"):
+            raw_node.setUserData("houtils:default_color", default_color)
 
-        if not self.node.userData("houtils:default_color"):
-            self.node.setUserData("houtils:default_color", default_color)
-        if not session.houtils_auto_color and session.houtils_manual_color:
-            self.set_color(self.node, session.houtils_manual_color)
-        self.parent_changed()
+        if raw_node.userData(key_auto) is None:
+            raw_node.setUserData(key_auto, "1" if cls.check_default_color(raw_node) else "0")
 
-    def color_changed(self):
-        if self.id in Auto_Color.history:
+        if raw_node.userData(key_leader) is None:
+            node.leader = cls.calc_leader(node)
+
+        if not session.houtils_auto_color and (manual_color := session.houtils_manual_color):
+            node.set_color(manual_color)
+
+        if load:
+            cls.queue_event(raw_node.sessionId(), "parent")
+
+
+
+    @classmethod
+    def color_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
+        if hou.hipFile.isLoadingHipFile() or kwargs["change_type"] != hou.appearanceChangeType.Color or cls.processing_lock:
             return
+        cls.queue_event(kwargs["node"].sessionId(), "color")
 
-        Auto_Color.depth += 1
-        Auto_Color.history.add(self.id)
+    @classmethod
+    def parent_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
+        if hou.hipFile.isLoadingHipFile():
+            return
+        cls.queue_event(kwargs["node"].sessionId(), "parent")
 
+    @classmethod
+    def clean_up(cls, event_type: hou.nodeEventType, **kwargs: dict):
+
+        if hou.hipFile.isShuttingDown():
+            cls.id_lookup.clear()
+            return
         try:
-            if self.node.userData(key_auto) != "0":
-                self.node.setUserData(key_auto, "0")
+            id = kwargs["node"].sessionId()  # pyright: ignore[reportAttributeAccessIssue]
+            if id in cls.id_lookup:
+                del cls.id_lookup[id]
+        except hou.ObjectWasDeleted:
+            pass
 
-            if (in_out := self.check_in_out(self.node)) and not self.check_block(self.node):
-                for out in self.node.outputs():
+    @classmethod
+    def queue_event(cls, node_id: int, event_type: str):
+        event = (node_id, event_type)
+        if event not in cls.update_queue:
+            cls.update_queue.append(event)
+
+        if not cls.scheduling_lock:
+            cls.scheduling_lock = True
+            hdefereval.executeDeferred(cls.process_queue)
+
+    @classmethod
+    def process_queue(cls):
+        cls.scheduling_lock = False
+        cls.processing_lock = True
+        with hou.undos.disabler():
+            try:
+                while cls.update_queue:
+                    node_id, event_type = cls.update_queue.pop(0)
+                    if node_id in cls.id_lookup:
+                        try:
+                            node = cls.id_lookup[node_id]
+                            if event_type == "parent":
+                                cls.parent_changed(node)
+                            elif event_type == "color":
+                                cls.color_changed(node)
+                        except hou.ObjectWasDeleted:
+                            pass
+            finally:
+                cls.cycle_history.clear()
+                cls.processing_lock = False
+
+    @classmethod
+    def color_changed(cls, raw_node: hou.OpNode):
+        node_id = raw_node.sessionId()
+        if node_id in cls.cycle_history:
+            return
+            
+        cls.cycle_history.add(node_id)
+        node = Node(raw_node)  
+        
+        block_begin = node.type().name() in block_begins
+
+        if node.userData(key_auto) != "0":
+            node.setUserData(key_auto, "0")
+
+        if (in_out := cls.check_in_out(node)) and not cls.check_block(node):
+            for out in node.outputs():
+                if out.userData(key_leader) != "1":
+                    out.setUserData(key_leader, "1")
+                if out.userData(key_auto) != "0":
+                    out.setUserData(key_auto, "0")
+
+        leader = cls.calc_leader(node)
+        
+        if not session.houtils_auto_color:
+            if not node.leader and leader:
+                if node.userData(key_auto) != "0":
+                    node.setUserData(key_auto, "0")
+                for out in node.outputs():
                     if out.userData(key_leader) != "1":
                         out.setUserData(key_leader, "1")
                     if out.userData(key_auto) != "0":
                         out.setUserData(key_auto, "0")
+        elif block_begin:
+            cls.flood_color(node, force=True)
+            cls.sync_block_siblings(node, force=True)
+        else:
+            cls.flood_color(node)
 
-            leader = self.calc_leader()
-            if not session.houtils_auto_color:
-                if not self.leader and leader:
-                    if self.node.userData(key_auto) != "0":
-                        self.node.setUserData(key_auto, "0")
-                    for out in self.node.outputs():
-                        if out.userData(key_leader) != "1":
-                            out.setUserData(key_leader, "1")
-                        if out.userData(key_auto) != "0":
-                            out.setUserData(key_auto, "0")
-            elif self.block_begin:
-                self.flood_color(force=True)
-            else:
-                self.flood_color()
+        node.leader = leader
 
-            self.leader = leader
+        if cls.check_default_color(node):
+            if node.userData(key_auto) != "1":
+                node.setUserData(key_auto, "1")
+        elif not session.houtils_auto_color and not in_out:
+            session.houtils_manual_color = node.color()
 
-            if self.check_default_color(self.node):
-                if self.node.userData(key_auto) != "1":
-                    self.node.setUserData(key_auto, "1")
-            elif not session.houtils_auto_color and not in_out:
-                session.houtils_manual_color = self.node.color()
+    @classmethod
+    def parent_changed(cls, raw_node: hou.OpNode):
+        node_id = raw_node.sessionId()
+        if node_id in cls.cycle_history:
+            return
+            
+        cls.cycle_history.add(node_id)
+        node = Node(raw_node)  
+        
+        block_begin = node.type().name() in block_begins
+        leader = cls.calc_leader(node)
 
-        finally:
-            Auto_Color.depth -= 1
-            if Auto_Color.depth == 0:
-                Auto_Color.history.clear()
-
-    def parent_changed(self):
-        if self.id in Auto_Color.history:
+        if not session.houtils_auto_color:
+            if not node.leader and leader:
+                if node.userData(key_auto) != "0":
+                    node.setUserData(key_auto, "0")
+            node.leader = leader
             return
 
-        Auto_Color.depth += 1
-        Auto_Color.history.add(self.id)
-
-        try:
-            leader = self.calc_leader()
-
-            if not session.houtils_auto_color:
-                if not self.leader and leader:
-                    if self.node.userData(key_auto) != "0":
-                        self.node.setUserData(key_auto, "0")
-                self.leader = leader
-                return
-
-            self.leader = leader
-            if leader:
-                if not self.node.inputs() and int(
-                    self.node.userData(key_auto) or False
+        node.leader = leader
+        
+        if leader:
+            if not node.inputs() and int(node.userData(key_auto) or False):
+                color = default_node_color(node.node)
+                if (
+                    block_begin
+                    and (block_end := node.node.node(node.evalParm("blockpath")))
+                    and (leader_node := cls.find_leader(block_end, node.node))
+                    and leader_node != node.node
                 ):
-                    color = default_node_color(self.node)
-                    if (
-                        self.block_begin
-                        and (
-                            block_end := self.node.node(self.node.evalParm("blockpath"))
-                        )
-                        and (leader_node := self.find_leader(block_end))
-                        and leader_node != self.node
-                    ):
-                        leader_color = leader_node.color()
-                        if self.check_default_color(leader_node, leader_color):
-                            color = default_node_color(self.node)
-                        else:
-                            color = leader_color
-                    self.set_color(self.node, color)
-                self.flood_color()
-            elif leader_node := self.find_leader():
-                color = leader_node.color()
-                if self.check_default_color(leader_node, color):
-                    color = default_node_color(self.node)
-                if not self.check_in_out(self.node):
-                    self.set_color(self.node, color)
-                self.flood_color(color)
-        finally:
-            Auto_Color.depth -= 1
-            if Auto_Color.depth == 0:
-                Auto_Color.history.clear()
+                    leader_color = leader_node.color()
+                    if cls.check_default_color(leader_node, leader_color):
+                        color = default_node_color(node.node)
+                    else:
+                        color = leader_color
+                node.set_color(color)
+            cls.flood_color(node)
+            
+        elif leader_node := cls.find_leader(node.node, node.node):
+            color = leader_node.color()
+            if cls.check_default_color(leader_node, color):
+                color = default_node_color(node.node)
+            if not cls.check_in_out(node):
+                node.set_color(color)
+            cls.flood_color(node, color)
+        else:
+            if int(node.userData(key_auto) or False):
+                color = default_node_color(node.node)
+                if not cls.check_in_out(node):
+                    node.set_color(color)
+                cls.flood_color(node)
 
-    def find_leader(self, node: hou.OpNode | None = None) -> hou.OpNode | None:
-        node = node if node else self.node
-        for input, state in traverse_up(node):
-            if int(input.userData(key_leader) or False):
-                return input
 
-    def calc_leader(self) -> bool:
-        color = self.node.color()
-        default = self.check_default_color(self.node, color)
+    @classmethod
+    def find_leader(cls, target_node: hou.OpNode, fallback_node: hou.OpNode) -> hou.OpNode | None:
+        target = target_node if target_node else fallback_node
+        for input_node, state in traverse_up(target):
+            if int(input_node.userData(key_leader) or False):
+                return input_node
 
-        if self.check_in_out(self.node) or self.check_block(self.node):
+    @classmethod
+    def calc_leader(cls, node: Node) -> bool:
+        color = node.color()
+        default = cls.check_default_color(node, color)
+
+        if cls.check_in_out(node) or cls.check_block(node):
             return False
 
         leader = True
-        is_auto = self.node.userData(key_auto) == "1"
-        existing_leader = self.node.userData(key_leader) == "1"
+        is_auto = node.userData(key_auto) == "1"
+        existing_leader = node.leader
         manual_color = session.houtils_manual_color
 
-        for input, state in traverse_up(self.node):
-            ignore = self.check_in_out(input)
+        for input_node, state in traverse_up(node.node):
+            ignore = cls.check_in_out(input_node)
             if not ignore and (default or (is_auto and session.houtils_auto_color)):
                 leader = False
-                # break
-            elif color == input.color():
+            elif color == input_node.color():
                 if color == manual_color:
                     leader = existing_leader
                 else:
                     leader = False
-                # break
             elif ignore:
                 continue
-            # if not ignore:
-
-            # state.skip = True
             break
         return leader
 
-    def flood_color(self, color: hou.Color | None = None, force: bool = False):
-        if self.check_in_out(self.node):
+    @classmethod
+    def flood_color(cls, node: Node, color: hou.Color | None = None, force: bool = False):
+        if cls.check_in_out(node):
             return
-        color = self.node.color() if not color else color
-        if self.check_default_color(self.node, color):
+            
+        color = node.color() if not color else color
+        if cls.check_default_color(node, color):
             color = None
 
-        for child, state in traverse_down(self.node):
-            if child.userData(key_leader) == "1":
+        for child, state in traverse_down(node.node):
+            child_proxy = Node(child)
+            
+            if child_proxy.leader:
                 if (child_color := child.color()) == color or (
-                    not color and self.check_default_color(child, child_color)
+                    not color and cls.check_default_color(child, child_color)
                 ):
-                    if child.userData(key_leader) != "0":
-                        child.setUserData(key_leader, "0")
+                    if child_proxy.leader:
+                        child_proxy.leader = False
                     if child.userData(key_auto) != "1":
                         child.setUserData(key_auto, "1")
                 else:
                     state.skip = True
                     continue
-            elif self.check_in_out(child):
-                if not (force or self.check_block(child)):
+            elif cls.check_in_out(child):
+                if not (force or cls.check_block(child)):
                     state.skip = True
                 continue
 
             final_color = color if color else default_node_color(child)
-            self.set_color(child, final_color)
+            child_proxy.set_color(final_color)
+
+            if child.type().name() in block_begins:
+                cls.sync_block_siblings(child_proxy, final_color, force)
+
+    @classmethod
+    def sync_block_siblings(cls, node: Node, color: hou.Color | None = None, force: bool = False):
+        if node.type().name() not in block_begins:
+            return
+
+        if block_end := node.node.node(str(node.evalParm("blockpath"))):
+            for b_node, b_state in traverse_up(block_end):
+                if b_node.type().name() in block_begins:
+                    b_state.skip = True
+                    if b_node != node.node:
+                        sib = Node(b_node)
+                        if not cls.check_default_color(sib):
+                            sib.leader = True
+                        else:
+                            sib.leader = False
+                        
+                        target_color = color if color else sib.color()
+                        cls.flood_color(sib, target_color, force)
 
     @staticmethod
-    def check_block(node: hou.OpNode) -> bool:
+    def check_block(node: hou.OpNode | Node) -> bool:
+        raw_node = node.node if isinstance(node, Node) else node
+        
         block = False
         store = set()
-        for parent, state in traverse_up(node):
+        for parent, state in traverse_up(raw_node):
             store.add(parent)
             if parent.type().name() in block_begins:
                 block_end = parent.node(str(parent.evalParm("blockpath")))
@@ -298,27 +376,12 @@ class Auto_Color:
         return block
 
     @staticmethod
-    def check_in_out(node: hou.OpNode) -> bool:
+    def check_in_out(node: hou.OpNode | Node) -> bool:
         return node.name().startswith(("OUT", "IN"))
 
     @staticmethod
-    def check_default_color(node: hou.OpNode, color: hou.Color | None = None) -> bool:
-        color = node.color() if not color else color
-        return default_node_color(node) == color
-
-    @staticmethod
-    def set_color(node: hou.OpNode, color: hou.Color):
-        if node.color() != color:
-            node.setColor(color)
-        if node.userData(key_auto) != "1":
-            node.setUserData(key_auto, "1")
-
-    @property
-    def leader(self) -> bool:
-        return bool(int(self.node.userData(key_leader) or False))
-
-    @leader.setter
-    def leader(self, state: bool):
-        val = str(int(state))
-        if self.node.userData(key_leader) != val:
-            self.node.setUserData(key_leader, val)
+    def check_default_color(node: hou.OpNode | Node, color: hou.Color | None = None) -> bool:
+        raw_node = node.node if isinstance(node, Node) else node
+        
+        color = raw_node.color() if not color else color
+        return default_node_color(raw_node) == color    
