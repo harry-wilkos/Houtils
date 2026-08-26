@@ -106,6 +106,8 @@ class Auto_Color:
 
         if not default_color:
             default_color = " ".join(map(str, raw_node.color().rgb()))
+            
+
             if block_begin and block_end:
                 block_end.setUserData("houtils:default_color", default_color)
 
@@ -379,7 +381,7 @@ class Auto_Color:
                     b_state.skip = True
                     if b_node != node.node:
                         sib = Node(b_node)
-                        if not cls.check_default_color(sib):
+                        if not cls.check_default_color(sib) and not cls.check_block(sib):
                             sib.leader = True
                         else:
                             sib.leader = False
@@ -413,7 +415,6 @@ class Auto_Color:
         node: hou.OpNode | Node, color: hou.Color | None = None
     ) -> bool:
         raw_node = node.node if isinstance(node, Node) else node
-
-        color = raw_node.color() if not color else color
-        return default_node_color(raw_node) == color
+        current_color = color if color else raw_node.color()
+        return default_node_color(raw_node) == current_color
 
