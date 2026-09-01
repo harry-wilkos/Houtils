@@ -106,7 +106,6 @@ class Auto_Color:
 
         if not default_color:
             default_color = " ".join(map(str, raw_node.color().rgb()))
-            
 
             if block_begin and block_end:
                 block_end.setUserData("houtils:default_color", default_color)
@@ -181,7 +180,7 @@ class Auto_Color:
     def process_queue(cls):
         cls.scheduling_lock = False
         cls.processing_lock = True
-        with hou.undos.disabler():
+        with hou.undos.disabler():  # pyright: ignore[reportGeneralTypeIssues]
             try:
                 while cls.update_queue:
                     node_id, event_type = cls.update_queue.pop(0)
@@ -271,7 +270,11 @@ class Auto_Color:
                 if (
                     block_begin
                     and (block_end := node.node.node(node.evalParm("blockpath")))
-                    and (leader_node := cls.find_leader(block_end, node.node))
+                    and (
+                        leader_node := cls.find_leader(
+                            block_end, node.node  # pyright: ignore[reportArgumentType]
+                        )
+                    )
                     and leader_node != node.node
                 ):
                     leader_color = leader_node.color()
@@ -376,12 +379,16 @@ class Auto_Color:
             return
 
         if block_end := node.node.node(str(node.evalParm("blockpath"))):
-            for b_node, b_state in traverse_up(block_end):
+            for b_node, b_state in traverse_up(
+                block_end  # pyright: ignore[reportArgumentType]
+            ):
                 if b_node.type().name() in block_begins:
                     b_state.skip = True
                     if b_node != node.node:
                         sib = Node(b_node)
-                        if not cls.check_default_color(sib) and not cls.check_block(sib):
+                        if not cls.check_default_color(sib) and not cls.check_block(
+                            sib
+                        ):
                             sib.leader = True
                         else:
                             sib.leader = False
@@ -417,4 +424,3 @@ class Auto_Color:
         raw_node = node.node if isinstance(node, Node) else node
         current_color = color if color else raw_node.color()
         return default_node_color(raw_node) == current_color
-
