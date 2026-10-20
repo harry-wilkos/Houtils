@@ -94,7 +94,6 @@ class Auto_Color:
     @classmethod
     def init_node(cls, raw_node: hou.OpNode, loading: bool = True):
         node = Node(raw_node)
-        print(loading)
 
         default_color = None
         block_begin = raw_node.type().name() in block_begins
