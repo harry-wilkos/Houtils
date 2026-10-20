@@ -67,7 +67,7 @@ class Auto_Color:
         cls.id_lookup[node.sessionId()] = node
 
         if kwargs.get("loading", False) or hou.hipFile.isLoadingHipFile():
-            cls.init_node(node, load=False)
+            cls.init_node(node, loading=True)
             node.addEventCallback(
                 (hou.nodeEventType.InputRewired,), cls.parent_changed_entry
             )
@@ -78,7 +78,7 @@ class Auto_Color:
         else:
             hdefereval.executeDeferred(
                 lambda: (
-                    cls.init_node(node, load=True),
+                    cls.init_node(node, loading=False),
                     node.addEventCallback(
                         (hou.nodeEventType.InputRewired,), cls.parent_changed_entry
                     ),
@@ -92,8 +92,9 @@ class Auto_Color:
             )
 
     @classmethod
-    def init_node(cls, raw_node: hou.OpNode, load: bool = True):
+    def init_node(cls, raw_node: hou.OpNode, loading: bool = True):
         node = Node(raw_node)
+        print(loading)
 
         default_color = None
         block_begin = raw_node.type().name() in block_begins
@@ -106,7 +107,6 @@ class Auto_Color:
 
         if not default_color:
             default_color = " ".join(map(str, raw_node.color().rgb()))
-
             if block_begin and block_end:
                 block_end.setUserData("houtils:default_color", default_color)
 
@@ -121,12 +121,12 @@ class Auto_Color:
         if raw_node.userData(key_leader) is None:
             node.leader = cls.calc_leader(node)
 
-        if not session.houtils_auto_color and (
+        if not loading and not session.houtils_auto_color and (
             manual_color := session.houtils_manual_color
-        ):
+        ) :
             node.set_color(manual_color)
 
-        if load:
+        if not loading:
             cls.queue_event(raw_node.sessionId(), "parent")
 
     @classmethod
