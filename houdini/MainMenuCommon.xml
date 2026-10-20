@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mainMenu>
+  <menuBar>
+    <subMenu>
+      <label>Houtils</label>
+      <insertBefore>help_menu</insertBefore>
+      <scriptItem id="h.Reload_Modules">
+        <label>Reload Modules</label>
+        <scriptCode><![CDATA[
+from houtils.tools import reload_modules
+reload_modules()
+                    ]]></scriptCode>
+        <scriptArgs>arg_one arg_two arg_three</scriptArgs>
+      </scriptItem>
+    </subMenu>
+  </menuBar>
+</mainMenu>
