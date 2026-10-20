@@ -8,7 +8,6 @@ except ImportError:
     from PySide2.QtCore import QTimer
 
 
-
 def background_notify(
     image_path: str | Path,
     time: int = 500,
