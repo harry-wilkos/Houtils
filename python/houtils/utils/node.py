@@ -1,7 +1,20 @@
+import random
 from collections import deque
 from typing import Iterator, Tuple
 
 import hou
+
+
+def random_color() -> hou.Color:
+    color = hou.Color()
+    color.setHSV(
+        (
+            random.random() * 360.0,
+            0.6 + random.random() * 0.4,
+            0.8 + random.random() * 0.2,
+        )
+    )
+    return color
 
 
 def default_node_color(node: hou.OpNode) -> hou.Color:
@@ -16,6 +29,7 @@ class TraversalState:
     def __init__(self):
         self.skip = False
 
+
 def traverse_up(node: hou.OpNode) -> Iterator[Tuple[hou.OpNode, TraversalState]]:
     queue = deque(node.inputs())
     store = set()
@@ -27,7 +41,7 @@ def traverse_up(node: hou.OpNode) -> Iterator[Tuple[hou.OpNode, TraversalState]]
             or (input.parent() != container)
         ):
             continue
-        
+
         state = TraversalState()
 
         yield input, state

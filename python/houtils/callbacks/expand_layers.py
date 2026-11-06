@@ -1,3 +1,6 @@
+from pathlib import Path
+from houtils.utils.ui import panel_inject
+
 import hdefereval
 import hou
 
@@ -102,9 +105,4 @@ def onNodePathChanged(node):
 
 
 def main():
-    interface = hou.pypanel.interfaceByName("SceneGraphLayersPanel")
-    if not interface:
-        return
-    interface.setFilePath(__file__)
-    with open(__file__, "r") as pwd:
-        interface.setScript(pwd.read())
+    panel_inject("SceneGraphLayersPanel")

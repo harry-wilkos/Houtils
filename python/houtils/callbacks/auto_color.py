@@ -1,3 +1,4 @@
+import functools
 import re
 
 import hdefereval
@@ -15,6 +16,30 @@ if not hasattr(session, "houtils_manual_color"):
 key_auto = "houtils:auto"
 key_leader = "houtils:leader"
 block_begins = frozenset(["compile_begin", "block_begin"])
+
+
+def process_lock(func):
+    @functools.wraps(func)
+    def wrapper(cls, *args, **kwargs):
+        cls.scheduling_lock = False
+        cls.processing_lock = True
+        try:
+            return func(cls, *args, **kwargs)
+        finally:
+            cls.cycle_history.clear()
+            cls.processing_lock = False
+
+    return wrapper
+
+
+def skip_lock(func):
+    @functools.wraps(func)
+    def wrapper(cls, event_type, **kwargs):
+        if cls.processing_lock or hou.hipFile.isLoadingHipFile():
+            return
+        return func(cls, event_type, **kwargs)
+
+    return wrapper
 
 
 class Node:
@@ -120,21 +145,20 @@ class Auto_Color:
         if raw_node.userData(key_leader) is None:
             node.leader = cls.calc_leader(node)
 
-        if not loading and not session.houtils_auto_color and (
-            manual_color := session.houtils_manual_color
-        ) :
+        if (
+            not loading
+            and not session.houtils_auto_color
+            and (manual_color := session.houtils_manual_color)
+        ):
             node.set_color(manual_color)
 
         if not loading:
             cls.queue_event(raw_node.sessionId(), "parent")
 
     @classmethod
+    @skip_lock
     def color_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
-        if (
-            hou.hipFile.isLoadingHipFile()
-            or kwargs["change_type"] != hou.appearanceChangeType.Color
-            or cls.processing_lock
-        ):
+        if kwargs["change_type"] != hou.appearanceChangeType.Color:
             return
         cls.queue_event(
             kwargs["node"].sessionId(),  # pyright: ignore[reportAttributeAccessIssue]
@@ -142,9 +166,8 @@ class Auto_Color:
         )
 
     @classmethod
+    @skip_lock
     def parent_changed_entry(cls, event_type: hou.nodeEventType, **kwargs: dict):
-        if hou.hipFile.isLoadingHipFile():
-            return
         cls.queue_event(
             kwargs["node"].sessionId(),  # pyright: ignore[reportAttributeAccessIssue]
             "parent",
@@ -152,7 +175,6 @@ class Auto_Color:
 
     @classmethod
     def clean_up(cls, event_type: hou.nodeEventType, **kwargs: dict):
-
         if hou.hipFile.isShuttingDown():
             cls.id_lookup.clear()
             return
@@ -176,25 +198,20 @@ class Auto_Color:
             hdefereval.executeDeferred(cls.process_queue)
 
     @classmethod
+    @process_lock
     def process_queue(cls):
-        cls.scheduling_lock = False
-        cls.processing_lock = True
         with hou.undos.disabler():  # pyright: ignore[reportGeneralTypeIssues]
-            try:
-                while cls.update_queue:
-                    node_id, event_type = cls.update_queue.pop(0)
-                    if node_id in cls.id_lookup:
-                        try:
-                            node = cls.id_lookup[node_id]
-                            if event_type == "parent":
-                                cls.parent_changed(node)
-                            elif event_type == "color":
-                                cls.color_changed(node)
-                        except hou.ObjectWasDeleted:
-                            pass
-            finally:
-                cls.cycle_history.clear()
-                cls.processing_lock = False
+            while cls.update_queue:
+                node_id, event_type = cls.update_queue.pop(0)
+                if node_id in cls.id_lookup:
+                    try:
+                        node = cls.id_lookup[node_id]
+                        if event_type == "parent":
+                            cls.parent_changed(node)
+                        elif event_type == "color":
+                            cls.color_changed(node)
+                    except hou.ObjectWasDeleted:
+                        pass
 
     @classmethod
     def color_changed(cls, raw_node: hou.OpNode):

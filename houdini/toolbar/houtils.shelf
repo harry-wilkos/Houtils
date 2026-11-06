@@ -12,6 +12,8 @@
     <memberTool name="clear_colors"/>
     <memberTool name="toggle_color_mode"/>
     <memberTool name="set_manual_color"/>
+    <memberTool name="test"/>
+    <memberTool name="clear"/>
   </toolshelf>
 
   <tool name="recook" label="Recook" icon="MISC_cook">

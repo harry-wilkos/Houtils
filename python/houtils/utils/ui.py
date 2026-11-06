@@ -1,3 +1,4 @@
+import inspect
 from pathlib import Path
 
 import hou
@@ -51,3 +52,19 @@ def background_notify(
             hou.ui.removeEventLoopCallback(run)
 
     hou.ui.addEventLoopCallback(run)
+
+
+def panel_inject(panel_name: str, save_location: str | Path | None = None):
+    save_location = (
+        save_location
+        if save_location
+        else Path(hou.text.expandString("$HOUDINI_USER_PREF_DIR"))
+        / "python_panels"
+        / "houtils.pypanel"
+    )
+    interface = hou.pypanel.interfaceByName(panel_name)
+    if not interface:
+        return
+    interface.setFilePath(str(save_location))
+    with open(inspect.stack()[1].filename, "r") as pwd:
+        interface.setScript(pwd.read())
