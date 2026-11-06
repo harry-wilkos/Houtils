@@ -1,10 +1,9 @@
 import functools
 import json
 import re
+import random
 
 import hou
-
-from houtils.utils.node import random_color
 
 lock = False
 bookmarks = set()
@@ -167,10 +166,16 @@ def get_max_order() -> int:
     return max_order
 
 
+def get_random_color() -> hou.Color:
+    c = hou.Color()
+    c.setHSV((random.random() * 360.0, 0.6 + random.random() * 0.4, 0.8 + random.random() * 0.2))
+    return c
+
+
 def sync_ranges():
     frame_range = hou.playbar.frameRange()
     f_min, f_max = frame_range
-
+    
     all_bookmarks = hou.anim.bookmarks()
     active_bookmark_names = {b.name() for b in all_bookmarks}
 
@@ -187,26 +192,24 @@ def sync_ranges():
         if not fix:
             if opt.slider_type() not in ("int_slider", "int_menu"):
                 continue
-
+                
             val = opt.value()
             if val is not None:
-                in_range = f_min <= val <= f_max
+                in_range = (f_min <= val <= f_max)
                 has_bookmark = key_name in active_bookmark_names
-
+                
                 if in_range:
                     opt.set_range(frame_range)
                     if not has_bookmark:
                         b = hou.anim.newBookmark(key_name, int(val), int(val))
-                        b.setColor(random_color())
-                        b.setMetadata(
-                            "houtils:name", key_name, hou.fieldType.String
-                        )  # Added metadata init
+                        b.setColor(get_random_color())
+                        b.setMetadata("houtils:name", key_name, hou.fieldType.String) 
                         bookmarks.add(key_name)
                         active_bookmark_names.add(key_name)
                 else:
                     if has_bookmark:
                         bookmarks_to_delete.add(key_name)
-
+                        
         else:
             if key_name in active_bookmark_names:
                 opt.set_range(frame_range)
@@ -254,21 +257,19 @@ def context_entry(context_name: str):
                     return
 
             b = hou.anim.newBookmark(bookmark_name, start_frame, end_frame)
-            b.setColor(random_color())
-            b.setMetadata(
-                "houtils:name", bookmark_name, hou.fieldType.String
-            )  # Added metadata init
+            b.setColor(get_random_color())
+            b.setMetadata("houtils:name", bookmark_name, hou.fieldType.String) 
             bookmarks.add(bookmark_name)
     else:
         val = hou.contextOption(context_name)
         if val is not None:
             frame_val = int(val)
             f_min, f_max = hou.playbar.frameRange()
-
+            
             if f_min <= val <= f_max:
                 opt.set_range((f_min, f_max))
                 found = False
-
+                
                 for b in hou.anim.bookmarks():
                     if b.name() == bookmark_name:
                         b.setStartFrame(frame_val)
@@ -278,10 +279,8 @@ def context_entry(context_name: str):
 
                 if not found:
                     b = hou.anim.newBookmark(bookmark_name, frame_val, frame_val)
-                    b.setColor(random_color())
-                    b.setMetadata(
-                        "houtils:name", bookmark_name, hou.fieldType.String
-                    )  # Added metadata init
+                    b.setColor(get_random_color())
+                    b.setMetadata("houtils:name", bookmark_name, hou.fieldType.String)
                     bookmarks.add(bookmark_name)
             else:
                 to_delete = [
@@ -291,15 +290,19 @@ def context_entry(context_name: str):
                     hou.anim.removeBookmarks(to_delete)
 
 
-def format_name(name: str) -> str:
-    latest_name = name.replace(" ", "_")
-    existing_names = [b.name() for b in hou.anim.bookmarks()]
+def format_name(bookmark) -> str:
+    """Ensures uniqueness by safely checking against all OTHER bookmark names."""
+    current_name = bookmark.name()
+    desired_name = current_name.replace(" ", "_")
+    
+    all_names = [b.name() for b in hou.anim.bookmarks()]
+    
+    # Remove OURSELVES from the name pool to avoid falsely counting our own existing name
+    if current_name in all_names:
+        all_names.remove(current_name)
 
-    if existing_names.count(latest_name) <= 1:
-        return latest_name
-
-    existing_set = set(existing_names)
-    while latest_name in existing_set:
+    latest_name = desired_name
+    while latest_name in all_names:
         latest_name = re.sub(
             r"(\d*)$",
             lambda m: str(int(m.group(1)) + 1) if m.group(1) else "1",
@@ -328,9 +331,24 @@ def clean_bookmarks():
 
 
 def bookmark_edited(bookmark):
-    latest_name = format_name(bookmark.name())
+    bm_name = bookmark.name()
     meta_name = bookmark.metadata("houtils:name")
-    name = latest_name if not meta_name else meta_name
+    
+    is_clone = False
+    if meta_name:
+        claimants = [b for b in hou.anim.bookmarks() if b.metadata("houtils:name") == meta_name]
+        if len(claimants) > 1:
+            if bm_name != meta_name:
+                is_clone = True
+                
+    name = meta_name if (meta_name and not is_clone) else None
+    
+    if name and bm_name == name:
+        latest_name = name
+    else:
+        latest_name = format_name(bookmark)
+        
+    search_name = name if name else latest_name
 
     position = 1
     single_opt = None
@@ -342,7 +360,7 @@ def bookmark_edited(bookmark):
             continue
 
         key_name, fix, pos = context_to_key(context_name)
-        if key_name == name:
+        if key_name == search_name:
             if not fix:
                 single_opt = Option(context_name)
             else:
@@ -409,8 +427,8 @@ def bookmark_edited(bookmark):
         start_opt.set_range(frame_range)
         end_opt.set_range(frame_range)
 
-    if name != latest_name and name in bookmarks:
-        bookmarks.remove(name)
+    if search_name != latest_name and search_name in bookmarks:
+        bookmarks.remove(search_name)
     bookmarks.add(latest_name)
 
     bookmark.setMetadata("houtils:name", latest_name, hou.fieldType.String)
@@ -428,12 +446,10 @@ def bookmark_entry(event_type, bookmark_id):
         return
 
     if event_type == hou.bookmarkEvent.Created:
-        name = format_name(bookmark.name())
+        name = format_name(bookmark)
         bookmarks.add(name)
+        bookmark.setMetadata("houtils:name", name, hou.fieldType.String) 
         bookmark.setName(name)
-        bookmark.setMetadata(
-            "houtils:name", name, hou.fieldType.String
-        )  # Added metadata init
     elif event_type == hou.bookmarkEvent.Modified:
         bookmark_edited(bookmark)
 
